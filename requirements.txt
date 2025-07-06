@@ -4,3 +4,5 @@ openai==1.93.0
 asyncio==3.4.3
 python-kasa==0.7.7
 pyttsx3==2.98
+whispercpp==0.0.17
+soundfile==0.13.1

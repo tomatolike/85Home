@@ -8,7 +8,7 @@ import json
 
 class AgentControl:
     _instance = None
-    _agent_name = "eighty six"
+    _agent_name = "八 六"
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:

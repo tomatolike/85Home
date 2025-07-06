@@ -16,7 +16,7 @@ class VoiceOutputer:
         else:
             self.use_espeak_direct = False
             self.engine = pyttsx3.init()
-            self.engine.setProperty('rate', 130)
+            self.engine.setProperty('rate', 145)
             self.engine.setProperty('volume', 1)
             if system == "Darwin":
                 pass  # macOS default voice
