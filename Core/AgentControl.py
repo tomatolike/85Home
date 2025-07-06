@@ -17,13 +17,23 @@ class AgentControl:
 
     @staticmethod
     def get_voice_input(text):
-        if AgentControl._agent_name not in text:
-            return
-        task = {
-            "type": "voice_input",
-            "text": text
-        }
-        AgentControl._instance.push_task(task)
+        AgentControl._instance.logger.info(f"Voice input received: {text}")
+        if not AgentControl._instance.wait_for_user_instruction:
+            if AgentControl._agent_name not in text:
+                AgentControl._instance.logger.info(f"User said: {text} but not for me")
+                return
+            else:
+                task = {
+                    "type": "user_call_name",
+                    "text": text
+                }
+                AgentControl._instance.push_task(task)
+        else:
+            task = {
+                "type": "voice_input",
+                "text": text
+            }
+            AgentControl._instance.push_task(task)
 
     def push_task(self, task):
         self.task_queue.put(task)
@@ -38,6 +48,7 @@ class AgentControl:
         self.ai_contactor = AiContactor()
         self.voice_outputer = VoiceOutputer()
         self.re_generate_system_message()
+        self.wait_for_user_instruction = False
 
     def re_generate_system_message(self):
         action_list_info = self.device_controller.getActionInfo()
@@ -65,9 +76,15 @@ class AgentControl:
     def process_task(self):
         if not self.task_queue.empty():
             task = self.task_queue.get()
-            if task["type"] == "voice_input":
+            self.logger.info(f"Processing task: {task}")
+            if task["type"] == "user_call_name":
                 self.stop_voice_collection()
+                self.wait_for_user_instruction = True
                 self.voice_outputer.speak("eighty six here")
+                self.start_voice_collection()
+            elif task["type"] == "voice_input":
+                self.wait_for_user_instruction = False
+                self.stop_voice_collection()
                 self.logger.info(f"User said: {task['text']}")
                 response = self.ai_contactor.communicate(task["text"])
                 self.process_response(response)
