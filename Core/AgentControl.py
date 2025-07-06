@@ -94,9 +94,11 @@ class AgentControl:
                 self.start_voice_collection()
 
     def start_voice_collection(self):
+        self.logger.info("Starting voice collection...")
         self.voice_collector.Start()
 
     def stop_voice_collection(self):
+        self.logger.info("Stopping voice collection...")
         self.voice_collector.Stop()
 
     def start(self):
