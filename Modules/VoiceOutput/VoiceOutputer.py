@@ -19,7 +19,7 @@ class VoiceOutputer:
             self.engine.setProperty('rate', 145)
             self.engine.setProperty('volume', 1)
             if system == "Darwin":
-                pass  # macOS default voice
+                self.engine.setProperty('voice', 134)  # macOS default voice
             elif system == "Linux":
                 self.engine.setProperty('voice', 28)  # May not be needed if voice names are different
 
