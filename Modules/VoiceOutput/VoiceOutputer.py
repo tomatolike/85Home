@@ -21,7 +21,8 @@ class VoiceOutputer:
             if system == "Darwin":
                 self.engine.setProperty('voice', 134)  # macOS default voice
             elif system == "Linux":
-                self.engine.setProperty('voice', 28)  # May not be needed if voice names are different
+                print("setting voice to 14")
+                self.engine.setProperty('voice', 14)  # May not be needed if voice names are different
 
     def speak(self, text):
         """Convert text to speech and block until done."""

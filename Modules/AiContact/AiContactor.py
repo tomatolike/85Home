@@ -75,6 +75,7 @@ class AiContactor:
                 '  "action_params": {} # the parameters for the action, depends on the action type\n'
                 "}\n"
                 "Your response text must be directly parseable by json.loads in python and it should not be pretty formatted.\n"
+                "Human user will speak chinese to you but your message must be in english.\n"
                 "The message is decoded by Vosk, so it might not be fully accurate. Try your best effort to understand it.\n"
                 'Your name (agent name) is "eighty six".\n'
                 "Here are the available actions:\n\n"
