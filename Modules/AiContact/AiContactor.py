@@ -79,7 +79,7 @@ class AiContactor:
                 'Your name (agent name) is "eighty six". Only respond when you hear your name.\n'
                 "Here are the available actions:\n\n"
                 "Action: MessageOnly\n"
-                "description: the message will be played to the human user, no other action performed.\n"
+                "description: the message will be played to the human user, no other action performed. If you don't understand the user message, say you don't understand. NEVER return an empty message with MessageOnly action.\n"
                 "parameters: none\n"
                 + action_list_info
             )

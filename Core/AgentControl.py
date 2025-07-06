@@ -69,6 +69,9 @@ class AgentControl:
 
             if action["message"] != "":
                 self.voice_outputer.speak(action["message"])
+            else:
+                if action["action"] == "MessageOnly":
+                    self.voice_outputer.speak("I don't understand.")
         except Exception as e:
             self.logger.error(f"Error processing response: {e}")
             
