@@ -83,7 +83,7 @@ class AgentControl:
             if task["type"] == "user_call_name":
                 self.stop_voice_collection()
                 self.wait_for_user_instruction = True
-                self.voice_outputer.speak("eighty six here")
+                self.voice_outputer.speak("yes master")
                 self.start_voice_collection()
             elif task["type"] == "voice_input":
                 self.wait_for_user_instruction = False
