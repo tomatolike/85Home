@@ -2,7 +2,6 @@ import threading
 import queue
 import json
 import sounddevice as sd
-import webrtcvad
 from vosk import Model, KaldiRecognizer
 
 
@@ -16,7 +15,7 @@ class VoiceCollector:
                 cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, model_path="/media/lovetomatoboy/RASP1/models/vosk-model-small-en-us-0.15", samplerate=16000):
+    def __init__(self, model_path="Modules/VoiceRec/models/vosk-model-small-en-us-0.15", samplerate=16000):
         if hasattr(self, '_initialized') and self._initialized:
             return
 
@@ -29,33 +28,19 @@ class VoiceCollector:
         self._thread = None
         self._stream = None
 
-        # VAD setup
-        self.vad = webrtcvad.Vad(2)  # Aggressiveness: 0-3
-        self.frame_duration_ms = 10
-        self.frame_size_bytes = int(self.samplerate * self.frame_duration_ms / 1000) * 2  # 16-bit mono
-
         self._initialized = True
 
     def _audio_callback(self, indata, frames, time, status):
         self.q.put(bytes(indata))
 
     def _monitor_loop(self):
-        buffer = b""
         while self._running:
             data = self.q.get()
-            buffer += data
-
-            while len(buffer) >= self.frame_size_bytes:
-                frame = buffer[:self.frame_size_bytes]
-                buffer = buffer[self.frame_size_bytes:]
-
-                if self.vad.is_speech(frame, self.samplerate):
-                    if self.recognizer.AcceptWaveform(frame):
-                        result = json.loads(self.recognizer.Result())
-                        text = result.get("text", "")
-                        if text and self._callback:
-                            self._callback(text)
-                # else: skip silent frame
+            if self.recognizer.AcceptWaveform(data):
+                result = json.loads(self.recognizer.Result())
+                text = result.get("text", "")
+                if text and self._callback:
+                    self._callback(text)
 
     def Start(self):
         if self._running:
@@ -64,7 +49,7 @@ class VoiceCollector:
 
         self._stream = sd.RawInputStream(
             samplerate=self.samplerate,
-            blocksize=self.samplerate,
+            blocksize=16000,
             dtype='int16',
             channels=1,
             callback=self._audio_callback

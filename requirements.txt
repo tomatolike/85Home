@@ -1,3 +1,6 @@
-vosk==0.3.45
+vosk==0.3.44
 sounddevice==0.5.2
-webrtcvad==2.0.10
+openai==1.93.0
+asyncio==3.4.3
+python-kasa==0.0.3
+pyttsx3==0.7.7
