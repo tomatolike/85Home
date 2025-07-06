@@ -8,8 +8,7 @@ import json
 
 class AgentControl:
     _instance = None
-    _agent_name = "八 六"
-    _agent_name_alternative = "八六"
+    _agent_name = "八六"
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -17,10 +16,19 @@ class AgentControl:
         return cls._instance
 
     @staticmethod
+    def is_calling_agent(text):
+        if AgentControl._agent_name in text:
+            return True
+        text = text.replace(" ", "")
+        if AgentControl._agent_name in text:
+            return True
+        return False
+
+    @staticmethod
     def get_voice_input(text):
         AgentControl._instance.logger.info(f"Voice input received: {text}")
         if not AgentControl._instance.wait_for_user_instruction:
-            if AgentControl._agent_name not in text and AgentControl._agent_name_alternative not in text:
+            if not AgentControl.is_calling_agent(text):
                 AgentControl._instance.logger.info(f"User said: {text} but not for me")
                 return
             else:
