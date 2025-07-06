@@ -2,5 +2,5 @@ vosk==0.3.44
 sounddevice==0.5.2
 openai==1.93.0
 asyncio==3.4.3
-python-kasa==0.0.3
-pyttsx3==0.7.7
+python-kasa==0.7.7
+pyttsx3==2.98
