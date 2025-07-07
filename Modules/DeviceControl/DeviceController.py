@@ -39,22 +39,21 @@ class DeviceController:
                 else:
                     await self.m_devices[alias].turn_off()
                 await self.m_devices[alias].update()
-                if self.m_devices[alias].is_on != on:
-                    self.logger.warning(f"Device {alias} state not changed as expected, retrying...")
-                    # try again
-                    if on:
-                        await self.m_devices[alias].turn_on()
-                    else:
-                        await self.m_devices[alias].turn_off()
-                    await self.m_devices[alias].update()
             except Exception as e:
                 self.logger.error(f"Error controlling device {alias}: {e}")
                 
+    def turnOnSingleDeviceInternal(self, alias, on):
+        retry_time = 5
+        while retry_time > 0:
+            asyncio.run(self.asyncTurnOnDevice(alias, on))
+            if self.m_devices[alias].is_on == on:
+                break
+            retry_time -= 1
 
     def turnOnDevice(self, aliases, ons):
         index = 0
         for alias in aliases:
-            asyncio.run(self.asyncTurnOnDevice(alias, ons[index]))
+            self.turnOnSingleDeviceInternal(alias, ons[index])
             index += 1
 
     def getActionInfo(self):
