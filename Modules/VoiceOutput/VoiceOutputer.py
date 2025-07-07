@@ -5,7 +5,6 @@ import pyttsx3
 system = platform.system()
 machine = platform.machine()
 
-
 class VoiceOutputer:
     def __init__(self):
         self.engine = None
@@ -20,14 +19,11 @@ class VoiceOutputer:
             self.engine.setProperty('volume', 1)
             if system == "Darwin":
                 self.engine.setProperty('voice', 134)  # macOS default voice
-            elif system == "Linux":
-                print("setting voice to 14")
-                self.engine.setProperty('voice', 14)  # May not be needed if voice names are different
 
     def speak(self, text):
         """Convert text to speech and block until done."""
         if self.use_espeak_direct:
-            subprocess.run(['espeak-ng', '-s', '130', text], check=True)
+            subprocess.run(['espeak-ng', '-s', '150', '-v', 'cmn-latn-pinyin', text], check=True)
         else:
             self.engine.say(text)
             self.engine.runAndWait()

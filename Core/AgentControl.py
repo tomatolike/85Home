@@ -80,7 +80,7 @@ class AgentControl:
                 self.voice_outputer.speak(action["message"])
             else:
                 if action["action"] == "MessageOnly":
-                    self.voice_outputer.speak("I don't understand.")
+                    self.voice_outputer.speak("我不明白")
         except Exception as e:
             self.logger.error(f"Error processing response: {e}")
             
@@ -92,7 +92,7 @@ class AgentControl:
             if task["type"] == "user_call_name":
                 self.stop_voice_collection()
                 self.wait_for_user_instruction = True
-                self.voice_outputer.speak("yes master")
+                self.voice_outputer.speak("我在")
                 self.start_voice_collection()
             elif task["type"] == "voice_input":
                 self.wait_for_user_instruction = False

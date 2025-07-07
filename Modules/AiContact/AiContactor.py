@@ -75,9 +75,8 @@ class AiContactor:
                 '  "action_params": {} # the parameters for the action, depends on the action type\n'
                 "}\n"
                 "Your response text must be directly parseable by json.loads in python and it should not be pretty formatted.\n"
-                "Human user will speak chinese to you but your message must be in english.\n"
+                "Human user will speak chinese to you and your message must be in chinese too.\n"
                 "The message is decoded by Vosk, so it might not be fully accurate. Try your best effort to understand it.\n"
-                'Your name (agent name) is "eighty six".\n'
                 "Here are the available actions:\n\n"
                 "Action: MessageOnly\n"
                 "description: the message will be played to the human user, no other action performed. If you don't understand the user message, say you don't understand. NEVER return an empty message with MessageOnly action.\n"
