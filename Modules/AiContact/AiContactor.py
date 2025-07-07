@@ -16,6 +16,7 @@ class AiContactor:
             self.client = OpenAI(api_key=self.deep_seek_api_key, base_url="https://api.deepseek.com")
 
         self.system_message = ""
+        self.message_list = [self.system_message]
 
     def parse_response(self, response_text):
         self.logger.info(f"Response from AI model: {response_text}")
@@ -44,19 +45,16 @@ class AiContactor:
         self.logger.info(f"Send to AI model: {message}")
         response = None
         if self.mode == "OPENAI":
-            response = self.client.responses.create(
+            response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                instructions=self.system_message["content"],
-                input=json.dumps([self.generate_messages(message, from_user)])
+                messages=self.generate_messages(message, from_user),
+                stream=False
             )
-            response = self.parse_response(response.output_text)
+            response = self.parse_response(response.choices[0].message.content)
         elif self.mode == "DEEPSEEK":
             response = self.client.chat.completions.create(
                 model="deepseek-chat",
-                messages=[
-                    self.system_message,
-                    self.generate_messages(message, from_user)
-                ],
+                messages=self.generate_messages(message, from_user),
                 stream=False
             )
             response = self.parse_response(response.choices[0].message.content)
@@ -87,8 +85,12 @@ class AiContactor:
         self.logger.info(f"System message generated: {self.system_message['content']}")
     
     def generate_messages(self, user_message, from_user):
+        self.message_list[0] = self.system_message
         new_message = {
             "role": "user" if from_user else "local_agent",
             "content": user_message
         }
-        return new_message
+        self.message_list.append(new_message)
+        if len(self.message_list) > 10:
+            self.message_list.pop(1)
+        return self.message_list

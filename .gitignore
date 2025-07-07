@@ -2,3 +2,4 @@
 __pycache__
 logs
 vosk-model-cn-0.22
+.DS_Store
