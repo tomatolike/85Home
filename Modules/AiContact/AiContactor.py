@@ -2,6 +2,7 @@ from openai import OpenAI
 from Core.utility import get_logger
 import os
 import json
+import time
 
 class AiContactor:
     def __init__(self, mode="DEEPSEEK"):
@@ -16,7 +17,8 @@ class AiContactor:
             self.client = OpenAI(api_key=self.deep_seek_api_key, base_url="https://api.deepseek.com")
 
         self.system_message = ""
-        self.message_list = [self.system_message]
+        self.message_list = [
+        ]
 
     def parse_response(self, response_text):
         self.logger.info(f"Response from AI model: {response_text}")
@@ -58,6 +60,7 @@ class AiContactor:
                 stream=False
             )
             response = self.parse_response(response.choices[0].message.content)
+        self.generate_messages(json.dumps(response), from_user=False)
         return response
 
     def generate_system_message(self, action_list_info):
@@ -65,10 +68,10 @@ class AiContactor:
             "role": "system",
             "content": (
                 "You are a home assistant.\n"
-                "I will send you many messages, either from human user's voice or from the local agent system, "
+                "I will send you many messages, either from human user's voice or from the system, "
                 "and you will respond in a raw json string in the following format:\n"
                 "{\n"
-                '  "message": "what you want to say to the human user, if it\'s responding to the local agent system, this should be empty",\n'
+                '  "message": "what you want to say to the human user. If you are responding to the system, message should be empty. If you are responding to the human user, this should never be empty.",\n'
                 '  "action": "the action you want to do. Pick action name from the available actions below",\n'
                 '  "action_params": {} # the parameters for the action, depends on the action type\n'
                 "}\n"
@@ -77,20 +80,39 @@ class AiContactor:
                 "The message is decoded by Vosk, so it might not be fully accurate. Try your best effort to understand it.\n"
                 "Here are the available actions:\n\n"
                 "Action: MessageOnly\n"
-                "description: the message will be played to the human user, no other action performed. If you don't understand the user message, say you don't understand. NEVER return an empty message with MessageOnly action.\n"
-                "parameters: none\n"
+                "description: the message will be played to the human user, no other action performed. NEVER return an empty message with MessageOnly action.\n"
+                "parameters:\n"
+                "- isQuestion: a boolean, whether you are expecting a response or an answer from the human user. You can only use it as true twice in one conversation."
                 + action_list_info
             )
         }
         self.logger.info(f"System message generated: {self.system_message['content']}")
     
+    def clean_up_messages(self):
+        now = time.time()
+        i = 1
+        while i < len(self.message_list):
+            if now - self.message_list[i]["time"] > 3600:
+                self.message_list.pop(i)
+            else:
+                i += 1
+
     def generate_messages(self, user_message, from_user):
-        self.message_list[0] = self.system_message
+        self.message_list[0] = {
+            "time": 0,
+            "message": self.system_message
+        }
         new_message = {
-            "role": "user" if from_user else "local_agent",
-            "content": user_message
+            "time": time.time(),
+            "message":{
+                "role": "user" if from_user else "home assistant",
+                "content": user_message
+            }
         }
         self.message_list.append(new_message)
-        if len(self.message_list) > 10:
-            self.message_list.pop(1)
-        return self.message_list
+        self.clean_up_messages()
+        
+        final_messages = []
+        for msg in self.message_list:
+            final_messages.append(msg["message"])
+        return final_messages

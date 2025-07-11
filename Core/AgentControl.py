@@ -5,6 +5,7 @@ from Modules.VoiceOutput.VoiceOutputer import VoiceOutputer
 from Core.utility import get_logger
 import queue
 import json
+import time
 
 class AgentControl:
     _instance = None
@@ -69,18 +70,21 @@ class AgentControl:
             if action["action"] == "ControlDevice":
                 aliases = action["action_params"]["alias"]
                 ons = action["action_params"]["on"]
+                self.voice_outputer.speak(action["message"])
                 self.device_controller.turnOnDevice(aliases, ons)
                 self.re_generate_system_message()
             elif action["action"] == "MessageOnly":
-                pass
+                if action["message"] != "":
+                    self.voice_outputer.speak(action["message"])
+                else:
+                    if action["action"] == "MessageOnly":
+                        self.voice_outputer.speak("我不明白")
+                if action["action_params"]["isQuestion"]:
+                    time.sleep(0.2)
+                    self.voice_collector.speak("请回答，哔哔：")
             else:
                 raise ValueError(f"Unknown action: {action['action']}")
 
-            if action["message"] != "":
-                self.voice_outputer.speak(action["message"])
-            else:
-                if action["action"] == "MessageOnly":
-                    self.voice_outputer.speak("我不明白")
         except Exception as e:
             self.logger.error(f"Error processing response: {e}")
             
