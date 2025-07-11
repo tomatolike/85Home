@@ -81,7 +81,8 @@ class AgentControl:
                         self.voice_outputer.speak("我不明白")
                 if action["action_params"]["isQuestion"]:
                     time.sleep(0.2)
-                    self.voice_collector.speak("请回答，哔哔：")
+                    self.voice_outputer.speak("请回答，哔哔：")
+                    self.wait_for_user_instruction = True
             else:
                 raise ValueError(f"Unknown action: {action['action']}")
 

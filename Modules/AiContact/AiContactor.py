@@ -98,14 +98,14 @@ class AiContactor:
                 i += 1
 
     def generate_messages(self, user_message, from_user):
-        self.message_list[0] = {
+        self.message_list.append({
             "time": 0,
             "message": self.system_message
-        }
+        })
         new_message = {
             "time": time.time(),
             "message":{
-                "role": "user" if from_user else "home assistant",
+                "role": "user" if from_user else "assistant",
                 "content": user_message
             }
         }
