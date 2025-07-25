@@ -43,24 +43,24 @@ class AiContactor:
             }
         return response
 
-    def communicate(self, message, from_user=True):
+    def communicate(self, message, from_type=1):
         self.logger.info(f"Send to AI model: {message}")
         response = None
         if self.mode == "OPENAI":
             response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=self.generate_messages(message, from_user),
+                messages=self.generate_messages(message, from_type),
                 stream=False
             )
             response = self.parse_response(response.choices[0].message.content)
         elif self.mode == "DEEPSEEK":
             response = self.client.chat.completions.create(
                 model="deepseek-chat",
-                messages=self.generate_messages(message, from_user),
+                messages=self.generate_messages(message, from_type),
                 stream=False
             )
             response = self.parse_response(response.choices[0].message.content)
-        self.generate_messages(json.dumps(response), from_user=False)
+        self.generate_messages(json.dumps(response), from_type=2)
         return response
 
     def generate_system_message(self, action_list_info):
@@ -97,15 +97,22 @@ class AiContactor:
             else:
                 i += 1
 
-    def generate_messages(self, user_message, from_user):
+    def generate_messages(self, user_message, from_type):
         self.message_list.append({
             "time": 0,
             "message": self.system_message
         })
+        sender = "user"
+        if from_type == 1:
+            pass
+        elif from_type == 2:
+            sender = "assistant"
+        elif from_type == 3:
+            sender = "system"
         new_message = {
             "time": time.time(),
             "message":{
-                "role": "user" if from_user else "assistant",
+                "role": sender,
                 "content": user_message
             }
         }

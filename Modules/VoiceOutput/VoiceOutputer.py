@@ -1,6 +1,7 @@
 import platform
 import subprocess
 import pyttsx3
+import re
 
 system = platform.system()
 machine = platform.machine()
@@ -32,4 +33,31 @@ class VoiceOutputer:
         """Stop speech engine."""
         if not self.use_espeak_direct and self.engine:
             self.engine.stop()
+
+    def getCurrentVolume(self):
+        output = subprocess.check_output(["amixer", "sget", "Master"]).decode()
+        match = re.search(r'\[(\d+)%\]', output)
+        if match:
+            return int(match.group(1))
+        return None
+    
+    def setVolume(self, percent):
+        subprocess.call(["amixer", "sset", "Master", f"{percent}%"])
+
+    def getActionInfo(self):
+        current_volume = self.getCurrentVolume()
+        if current_volume is not None:
+            current_volume = str(current_volume) + "%"
+        else:
+            current_volume = "UNKNOWN"
+        action_list_info = (
+        "\n\n"
+        "Action: ChangeVolume\n"
+        "description: you can change the agent's sound volume because the agent device is also a music player.\n"
+        "parameters:\n"
+        "- percent: the percentage of the volume, must be integer, 0 to 100.\n"
+        f"The current volume is: {current_volume}\n"
+        + "\n\n"
+    )
+        return action_list_info
 

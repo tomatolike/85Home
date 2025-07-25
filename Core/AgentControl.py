@@ -62,6 +62,7 @@ class AgentControl:
 
     def re_generate_system_message(self):
         action_list_info = self.device_controller.getActionInfo()
+        action_list_info += self.voice_outputer.getActionInfo()
         self.ai_contactor.generate_system_message(action_list_info)
 
     def process_response(self, action):
@@ -70,7 +71,8 @@ class AgentControl:
             if action["action"] == "ControlDevice":
                 aliases = action["action_params"]["alias"]
                 ons = action["action_params"]["on"]
-                self.voice_outputer.speak(action["message"])
+                if action["message"] != "":
+                    self.voice_outputer.speak(action["message"])
                 self.device_controller.turnOnDevice(aliases, ons)
                 self.re_generate_system_message()
             elif action["action"] == "MessageOnly":
@@ -83,6 +85,17 @@ class AgentControl:
                     time.sleep(0.2)
                     self.voice_outputer.speak("请回答，哔哔：")
                     self.wait_for_user_instruction = True
+            elif action["action"] == "ChangeVolume":
+                if action["message"] != "":
+                    self.voice_outputer.speak(action["message"])
+                if action["action_params"]["percent"] < 0 or action["action_params"]["percent"] > 100:
+                    task = {
+                        "type": "system_message",
+                        "text": f"Invalid volume number: {action['action_params']['percent']}. Must be integer between 0 and 100"
+                    }
+                    self.push_task(task)
+                else:
+                    self.voice_outputer.setVolume(action["action_params"]["percent"])
             else:
                 raise ValueError(f"Unknown action: {action['action']}")
 
@@ -106,6 +119,14 @@ class AgentControl:
                 response = self.ai_contactor.communicate(task["text"])
                 self.process_response(response)
                 self.start_voice_collection()
+            elif task["type"] == "system_message":
+                self.wait_for_user_instruction = False
+                self.stop_voice_collection()
+                self.logger.info(f"System Message: {task['text']}")
+                response = self.ai_contactor.communicate(task["text"], from_type=3)
+                self.process_response(response)
+                self.start_voice_collection()
+    
 
     def start_voice_collection(self):
         self.logger.info("Starting voice collection...")
