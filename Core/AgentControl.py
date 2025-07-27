@@ -59,6 +59,7 @@ class AgentControl:
         self.voice_outputer = VoiceOutputer()
         self.re_generate_system_message()
         self.wait_for_user_instruction = False
+        self.last_time_update_devices = time.time()
 
     def re_generate_system_message(self):
         action_list_info = self.device_controller.getActionInfo()
@@ -126,6 +127,11 @@ class AgentControl:
                 response = self.ai_contactor.communicate(task["text"], from_type=3)
                 self.process_response(response)
                 self.start_voice_collection()
+
+        now = time.time()
+        if now - self.last_time_update_devices > 300:
+            self.device_controller.updateDevices()
+            self.last_time_update_devices = now
     
 
     def start_voice_collection(self):
