@@ -18,3 +18,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("Stopping agent...")
         agent_control.stop()
+

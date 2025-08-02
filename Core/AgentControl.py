@@ -144,6 +144,7 @@ class AgentControl:
 
     def start(self):
         self.start_voice_collection()
+        self.voice_outputer.speak("已启动")
     
     def stop(self):
         self.stop_voice_collection()
