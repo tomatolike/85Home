@@ -71,10 +71,10 @@ class AgentControl:
             self.logger.info(f"Action received: {action}")
             if action["action"] == "ControlDevice":
                 aliases = action["action_params"]["alias"]
-                ons = action["action_params"]["on"]
+                statuses = action["action_params"]["status"]
                 if action["message"] != "":
                     self.voice_outputer.speak(action["message"])
-                self.device_controller.turnOnDevice(aliases, ons)
+                self.device_controller.changeDeviceStatus(aliases, statuses)
                 self.re_generate_system_message()
             elif action["action"] == "MessageOnly":
                 if action["message"] != "":
