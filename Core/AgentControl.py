@@ -77,27 +77,28 @@ class AgentControl:
         action_list_info += self.voice_outputer.getActionInfo()
         self.ai_contactor.generate_system_message(action_list_info)
 
-    def process_response(self, action):
+    def process_response(self, action, no_sound=False):
         try:
             self.logger.info(f"Action received: {action}")
             if action["action"] == "ControlDevice":
                 aliases = action["action_params"]["alias"]
                 statuses = action["action_params"]["status"]
-                if action["message"] != "":
+                if action["message"] != "" and not no_sound:
                     self.voice_outputer.speak(action["message"])
                 self.device_controller.changeDeviceStatus(aliases, statuses)
             elif action["action"] == "MessageOnly":
-                if action["message"] != "":
+                if action["message"] != "" and not no_sound:
                     self.voice_outputer.speak(action["message"])
                 else:
-                    if action["action"] == "MessageOnly":
+                    if action["action"] == "MessageOnly" and not no_sound:
                         self.voice_outputer.speak("我不明白")
                 if action["action_params"]["isQuestion"]:
                     time.sleep(0.2)
-                    self.voice_outputer.speak("请回答，哔哔：")
-                    self.wait_for_user_instruction = True
+                    if not no_sound:
+                        self.voice_outputer.speak("请回答，哔哔：")
+                        self.wait_for_user_instruction = True
             elif action["action"] == "ChangeVolume":
-                if action["message"] != "":
+                if action["message"] != "" and not no_sound:
                     self.voice_outputer.speak(action["message"])
                 if action["action_params"]["percent"] < 0 or action["action_params"]["percent"] > 100:
                     task = {
@@ -117,19 +118,20 @@ class AgentControl:
     def process_task(self):
         if not self.task_queue.empty():
             task = self.task_queue.get()
-            self.logger.info(f"Processing task: {task}")
+            if task["type"] != "robot_status":
+                self.logger.info(f"Processing task: {task}")
             if task["type"] == "user_call_name":
                 self.stop_voice_collection()
                 self.wait_for_user_instruction = True
                 self.voice_outputer.speak("我在")
                 self.start_voice_collection()
-            elif task["type"] == "voice_input":
+            elif task["type"] == "voice_input" or task['type'] == "client_message":
                 self.wait_for_user_instruction = False
                 self.stop_voice_collection()
                 self.logger.info(f"User said: {task['text']}")
                 self.re_generate_system_message()
                 response = self.ai_contactor.communicate(task["text"])
-                self.process_response(response)
+                self.process_response(response, task['type'] == "client_message")
                 self.start_voice_collection()
             elif task["type"] == "system_message":
                 self.wait_for_user_instruction = False
@@ -142,7 +144,10 @@ class AgentControl:
             elif task["type"] == "robot_status":
                 #self.logger.info(f"Robot status received: {task['status']}")
                 self.robot_status = task["status"]
-
+            elif task['tupe'] == "robot_move":
+                self.robot_server.send_command("move", task['command'])
+            elif task['type'] == "client_device":
+                self.device_controller.changeDeviceStatus([task['target']], [task['targetStatus']])
         now = time.time()
         if now - self.last_time_update_devices > 300:
             self.device_controller.sync_update_devices()
