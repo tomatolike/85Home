@@ -177,12 +177,15 @@ class DeviceController:
         self.m_devices.update(await SwitchBotDevice.discorverDevices())
 
     def sync_update_devices(self):
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # Schedule as a task
-            asyncio.create_task(self.updateDevices())
-        else:
-            loop.run_until_complete(self.updateDevices()) 
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Schedule as a task
+                asyncio.create_task(self.updateDevices())
+            else:
+                loop.run_until_complete(self.updateDevices()) 
+        except:
+            asyncio.run(self.updateDevices())
 
     def getDevicesInfo(self):
         result = []
