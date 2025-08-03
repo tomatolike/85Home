@@ -20,23 +20,38 @@ class RobotTCPServer(threading.Thread):
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self.host, self.port))
             s.listen(1)
-            self.conn, self.addr = s.accept()
-            self.is_connected = True
+            self.logger.info(f"Server listening on {self.host}:{self.port}")
+
             while self.running:
                 try:
-                    data = self.conn.recv(4096)
-                    if not data:
-                        break
-                    try:
-                        status = json.loads(data.decode())
-                        if self.status_callback:
-                            self.status_callback(status)
-                    except Exception as e:
-                        self.logger.error(f"Error parsing status: {e}")
+                    self.logger.info("Waiting for a connection...")
+                    self.conn, self.addr = s.accept()
+                    self.is_connected = True
+                    self.logger.info(f"Connected by {self.addr}")
+
+                    while self.running:
+                        data = self.conn.recv(4096)
+                        if not data:
+                            self.logger.warning("Client disconnected.")
+                            break
+                        try:
+                            status = json.loads(data.decode())
+                            if self.status_callback:
+                                self.status_callback(status)
+                        except Exception as e:
+                            self.logger.error(f"Error parsing status: {e}")
                 except Exception as e:
-                    self.logger.error(f"Connection error:{e}")
-                    break
-            self.is_connected = False
+                    self.logger.error(f"Connection error: {e}")
+                finally:
+                    if self.conn:
+                        try:
+                            self.conn.close()
+                        except Exception:
+                            pass
+                    self.conn = None
+                    self.is_connected = False
+                    self.logger.info("Ready to accept new connections.")
+
 
     def send_command(self, cmd_type, command):
         if self.conn:
