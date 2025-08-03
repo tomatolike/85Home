@@ -1,3 +1,4 @@
+# Home assistant
 sudo apt-get update
 sudo apt-get install build-essential portaudio19-dev espeak-ng
 
@@ -20,3 +21,8 @@ sudo apt install -y libasound2-dev libdbus-1-dev build-essential pkg-config
 git clone https://github.com/Spotifyd/spotifyd.git
 cd spotifyd
 cargo build --release --features dbus_mpris
+
+# Irobot control
+Don't need to install requirements.txt
+just run python robot_main.py
+

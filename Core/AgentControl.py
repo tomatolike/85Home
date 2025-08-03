@@ -71,6 +71,7 @@ class AgentControl:
         self.last_time_update_devices = time.time()
         self.robot_server = RobotTCPServer(host='0.0.0.0', port=9000, callback=AgentControl.get_robot_status)
         self.robot_server.start()
+        self.robot_status = {}
 
     def re_generate_system_message(self):
         action_list_info = self.device_controller.getActionInfo()
@@ -139,13 +140,21 @@ class AgentControl:
                 self.process_response(response)
                 self.start_voice_collection()
             elif task["type"] == "robot_status":
-                self.logger.info(f"Robot status received: {task['status']}")
+                #self.logger.info(f"Robot status received: {task['status']}")
+                self.robot_status = task["status"]
 
         now = time.time()
         if now - self.last_time_update_devices > 300:
             self.device_controller.updateDevices()
             self.last_time_update_devices = now
-    
+
+    def get_status(self):
+        status = {
+            "messages": self.ai_contactor.message_list,
+            "devices": self.device_controller.getDevicesInfo(),
+            "robot": self.robot_status
+        }
+        return status
 
     def start_voice_collection(self):
         self.logger.info("Starting voice collection...")

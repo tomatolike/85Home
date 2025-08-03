@@ -7,3 +7,6 @@ pyttsx3==2.98
 whispercpp==0.0.17
 soundfile==0.13.1
 spotify-cli-linux==1.9.1
+fastapi==0.116.1
+uvicorn==0.35.0
+pydantic==2.11.7
