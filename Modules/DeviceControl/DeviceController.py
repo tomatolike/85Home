@@ -46,7 +46,7 @@ class SwitchBotDevice(Device):
         result = {}
         url = "https://api.switch-bot.com/v1.1/devices"
         response = requests.get(url, headers=SwitchBotDevice.apiHeader)
-        allow_device_types = ['Smart Lock', 'Bot']
+        allow_device_types = ['Bot']
         if response.status_code == 200:
             data = response.json()
             devices = data['body']['deviceList']
@@ -74,16 +74,18 @@ class SwitchBotDevice(Device):
     async def change_status(self, new_status):
         url = f"https://api.switch-bot.com/v1.1/devices/{self.actual_device['deviceId']}/commands"
         payload = {}
-        if self.actual_device['deviceType'] == 'Smart Lock':
-            if new_status == "locked":
-                payload['command'] = "lock"
-            elif new_status == "unlocked":
-                payload['command'] = "unlock"
-        elif self.actual_device['deviceType'] == 'Bot':
+        # if self.actual_device['deviceType'] == 'Smart Lock':
+        #     if new_status == "locked":
+        #         payload['command'] = "lock"
+        #     elif new_status == "unlocked":
+        #         payload['command'] = "unlock"
+        if self.actual_device['deviceType'] == 'Bot':
             if new_status == "on":
                 payload['command'] = "turnOn"
             elif new_status == "off":
                 payload['command'] = "turnOff"
+        else:
+            return
         
         response = requests.post(url, headers=SwitchBotDevice.apiHeader, json=payload)
         if response.status_code == 200:
