@@ -172,9 +172,17 @@ class DeviceController:
         self.logger = get_logger(__name__)
         self.m_devices = {}
 
-    def updateDevices(self):
-        self.m_devices.update(asyncio.run(KasaDevice.discorverDevices()))
-        self.m_devices.update(asyncio.run(SwitchBotDevice.discorverDevices()))
+    async def updateDevices(self):
+        self.m_devices.update(await KasaDevice.discorverDevices())
+        self.m_devices.update(await SwitchBotDevice.discorverDevices())
+
+    def sync_update_devices(self):
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Schedule as a task
+            asyncio.create_task(self.updateDevices())
+        else:
+            loop.run_until_complete(self.updateDevices()) 
 
     def getDevicesInfo(self):
         result = []
