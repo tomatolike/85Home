@@ -46,7 +46,7 @@ class SwitchBotDevice(Device):
         result = {}
         url = "https://api.switch-bot.com/v1.1/devices"
         response = requests.get(url, headers=SwitchBotDevice.apiHeader)
-        allow_device_types = ['Smart Lock']
+        allow_device_types = ['Smart Lock', 'Bot']
         if response.status_code == 200:
             data = response.json()
             devices = data['body']['deviceList']
@@ -67,6 +67,8 @@ class SwitchBotDevice(Device):
     def get_desc(self):
         if self.actual_device['deviceType'] == 'Smart Lock':
             return "Status can be locked or unlocked"
+        elif self.actual_device['deviceType'] == 'Bot':
+            return "Status can be off or on"
         return "UNKNOWN"
     
     async def change_status(self, new_status):
@@ -77,6 +79,11 @@ class SwitchBotDevice(Device):
                 payload['command'] = "lock"
             elif new_status == "unlocked":
                 payload['command'] = "unlock"
+        elif self.actual_device['deviceType'] == 'Bot':
+            if new_status == "on":
+                payload['command'] = "turnOn"
+            elif new_status == "off":
+                payload['command'] = "turnOff"
         
         response = requests.post(url, headers=SwitchBotDevice.apiHeader, json=payload)
         if response.status_code == 200:
@@ -87,6 +94,8 @@ class SwitchBotDevice(Device):
         # wait for execution
         if self.actual_device['deviceType'] == 'Smart Lock':
             time.sleep(10)
+        elif self.actual_device['deviceType'] == 'Bot':
+            time.sleep(40)
 
     async def update_status(self):
         url = f"https://api.switch-bot.com/v1.1/devices/{self.actual_device['deviceId']}/status"
@@ -95,6 +104,8 @@ class SwitchBotDevice(Device):
             data = response.json()
             if self.actual_device['deviceType'] == 'Smart Lock':
                 self.status = data['body']['lockState']
+            elif self.actual_device['deviceType'] == 'Bot':
+                self.status = data['body']['power']
             else:
                 self.status = "UNKNOWN"
         else:
