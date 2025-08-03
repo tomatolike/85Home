@@ -159,7 +159,10 @@ class AgentControl:
         status = {
             "messages": self.ai_contactor.message_list,
             "devices": self.device_controller.getDevicesInfo(),
-            "robot": self.robot_status
+            "robot": {
+                "connected": self.robot_server.is_connected,
+                "status": self.robot_status
+            }
         }
         return status
 

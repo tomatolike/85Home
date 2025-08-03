@@ -1,6 +1,7 @@
 import socket
 import threading
 import json
+from Core.utility import get_logger
 
 class RobotTCPServer(threading.Thread):
     def __init__(self, host='0.0.0.0', port=9000, callback=None):
@@ -11,15 +12,16 @@ class RobotTCPServer(threading.Thread):
         self.addr = None
         self.running = True
         self.status_callback = callback  # Optional: function to call with new status
+        self.logger = get_logger(__name__)
+        self.is_connected = False
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self.host, self.port))
             s.listen(1)
-            print("Waiting for robot connection...")
             self.conn, self.addr = s.accept()
-            print(f"Robot connected from {self.addr}")
+            self.is_connected = True
             while self.running:
                 try:
                     data = self.conn.recv(4096)
@@ -27,14 +29,14 @@ class RobotTCPServer(threading.Thread):
                         break
                     try:
                         status = json.loads(data.decode())
-                        print("Robot status:", status)
                         if self.status_callback:
                             self.status_callback(status)
                     except Exception as e:
-                        print("Error parsing status:", e)
+                        self.logger.error(f"Error parsing status: {e}")
                 except Exception as e:
-                    print("Connection error:", e)
+                    self.logger.error(f"Connection error:{e}")
                     break
+            self.is_connected = False
 
     def send_command(self, cmd_type, command):
         if self.conn:
@@ -42,4 +44,4 @@ class RobotTCPServer(threading.Thread):
                 msg = json.dumps({'type': cmd_type, 'command': command})
                 self.conn.sendall(msg.encode())
             except Exception as e:
-                print("Failed to send command:", e)
+                self.logger.error(f"Failed to send command: {e}")
