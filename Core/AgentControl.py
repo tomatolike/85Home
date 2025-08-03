@@ -2,6 +2,7 @@ from Modules.VoiceRec.VoiceCollector import VoiceCollector
 from Modules.DeviceControl.DeviceController import DeviceController
 from Modules.AiContact.AiContactor import AiContactor
 from Modules.VoiceOutput.VoiceOutputer import VoiceOutputer
+from Modules.RobotServer.RobotTCPServer import RobotTCPServer
 from Core.utility import get_logger
 import queue
 import json
@@ -45,6 +46,14 @@ class AgentControl:
             }
             AgentControl._instance.push_task(task)
 
+    @staticmethod
+    def get_robot_status(status):
+        task = {
+            "type": "robot_status",
+            "status": status
+        }
+        AgentControl._instance.push_task(task)
+
     def push_task(self, task):
         self.task_queue.put(task)
 
@@ -60,6 +69,8 @@ class AgentControl:
         self.re_generate_system_message()
         self.wait_for_user_instruction = False
         self.last_time_update_devices = time.time()
+        self.robot_server = RobotTCPServer(host='0.0.0.0', port=9000, callback=AgentControl.get_robot_status)
+        self.robot_server.start()
 
     def re_generate_system_message(self):
         action_list_info = self.device_controller.getActionInfo()
@@ -127,6 +138,8 @@ class AgentControl:
                 response = self.ai_contactor.communicate(task["text"], from_type=3)
                 self.process_response(response)
                 self.start_voice_collection()
+            elif task["type"] == "robot_status":
+                self.logger.info(f"Robot status received: {task['status']}")
 
         now = time.time()
         if now - self.last_time_update_devices > 300:
