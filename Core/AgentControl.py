@@ -125,7 +125,7 @@ class AgentControl:
                 self.wait_for_user_instruction = True
                 self.voice_outputer.speak("我在")
                 self.start_voice_collection()
-            elif task["type"] == "voice_input" or task['type'] == "client_message":
+            elif task["type"] == "voice_input" or task['type'] == "chat_message":
                 self.wait_for_user_instruction = False
                 self.stop_voice_collection()
                 self.logger.info(f"User said: {task['text']}")
@@ -144,7 +144,7 @@ class AgentControl:
             elif task["type"] == "robot_status":
                 #self.logger.info(f"Robot status received: {task['status']}")
                 self.robot_status = task["status"]
-            elif task['tupe'] == "robot_move":
+            elif task['type'] == "robot_move":
                 self.robot_server.send_command("move", task['command'])
             elif task['type'] == "client_device":
                 self.device_controller.changeDeviceStatus([task['target']], [task['targetStatus']])
