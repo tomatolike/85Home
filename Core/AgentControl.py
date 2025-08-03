@@ -66,7 +66,6 @@ class AgentControl:
         self.device_controller.sync_update_devices()
         self.ai_contactor = AiContactor()
         self.voice_outputer = VoiceOutputer()
-        self.re_generate_system_message()
         self.wait_for_user_instruction = False
         self.last_time_update_devices = time.time()
         self.robot_server = RobotTCPServer(host='0.0.0.0', port=9000, callback=AgentControl.get_robot_status)
@@ -87,7 +86,6 @@ class AgentControl:
                 if action["message"] != "":
                     self.voice_outputer.speak(action["message"])
                 self.device_controller.changeDeviceStatus(aliases, statuses)
-                self.re_generate_system_message()
             elif action["action"] == "MessageOnly":
                 if action["message"] != "":
                     self.voice_outputer.speak(action["message"])
@@ -129,6 +127,7 @@ class AgentControl:
                 self.wait_for_user_instruction = False
                 self.stop_voice_collection()
                 self.logger.info(f"User said: {task['text']}")
+                self.re_generate_system_message()
                 response = self.ai_contactor.communicate(task["text"])
                 self.process_response(response)
                 self.start_voice_collection()
@@ -136,6 +135,7 @@ class AgentControl:
                 self.wait_for_user_instruction = False
                 self.stop_voice_collection()
                 self.logger.info(f"System Message: {task['text']}")
+                self.re_generate_system_message()
                 response = self.ai_contactor.communicate(task["text"], from_type=3)
                 self.process_response(response)
                 self.start_voice_collection()
