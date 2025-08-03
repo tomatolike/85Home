@@ -5,16 +5,18 @@ import threading
 import socket
 import json
 
+robot = Irobot()
+
 class RobotTCPClient(threading.Thread):
-    def __init__(self, irobot, server_ip, server_port):
+    def __init__(self, server_ip, server_port):
         super().__init__(daemon=True)
-        self.irobot = irobot
         self.server_ip = server_ip
         self.server_port = server_port
         self.sock = None
         self.running = True
 
     def run(self):
+        global robot
         while self.running:
             try:
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -28,9 +30,12 @@ class RobotTCPClient(threading.Thread):
                         msg = data.decode()
                         cmd = json.loads(msg)
                         if cmd['type'] == 'move':
-                            self.irobot.PushMoveCommand(cmd['command'])
+                            robot.PushMoveCommand(cmd['command'])
                         elif cmd['type'] == 'car':
-                            self.irobot.PushCarCommand(cmd['command'])
+                            if cmd['command'] == 'reconnect':
+                                robot = Irobot()
+                            else:
+                                robot.PushCarCommand(cmd['command'])
                     except Exception as e:
                         print("Error processing command:", e)
             except Exception as e:
@@ -53,8 +58,7 @@ if __name__ == "__main__":
     setup_logging()
     logger = get_logger(__name__)
     
-    robot = Irobot()
-    tcp_client = RobotTCPClient(robot, server_ip='192.168.0.236', server_port=9000)  # Set correct IP/port
+    tcp_client = RobotTCPClient(server_ip='192.168.0.236', server_port=9000)  # Set correct IP/port
     tcp_client.start()
 
     try:
