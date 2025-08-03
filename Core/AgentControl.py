@@ -131,7 +131,7 @@ class AgentControl:
                 self.logger.info(f"User said: {task['text']}")
                 self.re_generate_system_message()
                 response = self.ai_contactor.communicate(task["text"])
-                self.process_response(response, task['type'] == "client_message")
+                self.process_response(response, task['type'] == "chat_message")
                 self.start_voice_collection()
             elif task["type"] == "system_message":
                 self.wait_for_user_instruction = False
@@ -146,6 +146,8 @@ class AgentControl:
                 self.robot_status = task["status"]
             elif task['type'] == "robot_move":
                 self.robot_server.send_command("move", task['command'])
+            elif task['type'] == "robot_car":
+                self.robot_server.send_command("car", task['command'])
             elif task['type'] == "client_device":
                 self.device_controller.changeDeviceStatus([task['target']], [task['targetStatus']])
         now = time.time()
