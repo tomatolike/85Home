@@ -4,7 +4,6 @@ import time
 from fastapi import FastAPI
 import threading
 import asyncio
-
 app = FastAPI()
 setup_logging()
 logger = get_logger("HomeServer")
@@ -12,6 +11,8 @@ logger = get_logger("HomeServer")
 agent_control = None
 
 def agent_loop():
+    global agent_control
+    agent_control = AgentControl()
     try:
         logger.info("Agent is running...")
         agent_control.start()
@@ -22,14 +23,12 @@ def agent_loop():
         logger.error("Agent loop error: %s", e)
         agent_control.stop()
 
-async def after_start():
-    global agent_control
-    agent_control = AgentControl()  # this can now safely call anyio.from_thread.run
+def after_start():
     threading.Thread(target=agent_loop, daemon=True).start()
 
 @app.on_event("startup")
 async def startup_event():
-    await after_start()  # now runs inside a real AnyIO worker thread
+    asyncio.get_event_loop().call_soon(after_start)
 
 @app.post("/task")
 async def post_task(task: dict):
