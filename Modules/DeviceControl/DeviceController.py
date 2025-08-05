@@ -1,4 +1,3 @@
-import asyncio
 from kasa import Discover
 from Core.utility import get_logger
 import json
@@ -8,6 +7,7 @@ import hmac
 import base64
 import uuid
 import requests
+import anyio
 
 class Device:
     def __init__(self, actual_device):
@@ -175,19 +175,12 @@ class DeviceController:
         self.m_devices = {}
 
     async def updateDevices(self):
+        self.m_devices = {}
         self.m_devices.update(await KasaDevice.discorverDevices())
         self.m_devices.update(await SwitchBotDevice.discorverDevices())
 
     def sync_update_devices(self):
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # Schedule as a task
-                asyncio.create_task(self.updateDevices())
-            else:
-                loop.run_until_complete(self.updateDevices()) 
-        except:
-            asyncio.run(self.updateDevices())
+        anyio.from_thread.run(self.updateDevices)
 
     def getDevicesInfo(self):
         result = []
@@ -205,11 +198,11 @@ class DeviceController:
             retry_time = 5
             while retry_time > 0:
                 try:
-                    asyncio.run(self.m_devices[alias].update_status())
+                    anyio.from_thread.run(self.m_devices[alias].update_status)
                     if self.m_devices[alias].get_status() == statuses[index]:
                         break
-                    asyncio.run(self.m_devices[alias].change_status(statuses[index]))
-                    asyncio.run(self.m_devices[alias].update_status())
+                    anyio.from_thread.run(self.m_devices[alias].change_status, statuses[index])
+                    anyio.from_thread.run(self.m_devices[alias].update_status)
                     if self.m_devices[alias].get_status() == statuses[index]:
                         break
                     retry_time -= 1
