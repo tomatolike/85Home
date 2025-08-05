@@ -36,10 +36,10 @@ def handle_client(conn, addr):
                 line, buffer = buffer.split("\n", 1)
                 try:
                     request = json.loads(line)
-                    if request["action"] == "task":
+                    if request["action"] == "server_task":
                         agent_control.push_task(request["data"])
                         response = {"result": "Task received"}
-                    elif request["action"] == "status":
+                    elif request["action"] == "server_status":
                         response = {"statuses": agent_control.get_status()}
                     else:
                         response = {"error": "Unknown action"}
