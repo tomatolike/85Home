@@ -3,6 +3,7 @@ from Core.utility import setup_logging, get_logger
 import time
 from fastapi import FastAPI
 import threading
+import asyncio
 
 app = FastAPI()
 setup_logging()
@@ -21,14 +22,14 @@ def agent_loop():
         logger.error("Agent loop error: %s", e)
         agent_control.stop()
 
+def after_start():
+    global agent_control
+    agent_control = AgentControl()
+    threading.Thread(target=agent_loop, daemon=True).start()
+
 @app.on_event("startup")
 async def startup_event():
-    # This ensures it's safe to run async/sync bridge logic
-    global agent_control
-    agent_control = AgentControl() 
-
-    # Start the agent loop thread
-    threading.Thread(target=agent_loop, daemon=True).start()
+    asyncio.get_event_loop().call_soon(after_start)
 
 @app.post("/task")
 async def post_task(task: dict):
