@@ -22,14 +22,14 @@ def agent_loop():
         logger.error("Agent loop error: %s", e)
         agent_control.stop()
 
-def after_start():
+async def after_start():
     global agent_control
-    agent_control = AgentControl()
+    agent_control = AgentControl()  # this can now safely call anyio.from_thread.run
     threading.Thread(target=agent_loop, daemon=True).start()
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.get_event_loop().call_soon(after_start)
+    await after_start()  # now runs inside a real AnyIO worker thread
 
 @app.post("/task")
 async def post_task(task: dict):
