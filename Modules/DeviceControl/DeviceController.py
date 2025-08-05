@@ -155,13 +155,27 @@ class KasaDevice(Device):
         return "Status could be ON or OFF"
     
     async def change_status(self, new_status):
-        if new_status == "ON":
-            await self.actual_device.turn_on()
-        else:
-            await self.actual_device.turn_off()
+        retry_limit = 3
+        while retry_limit > 0:
+            try:
+                if new_status == "ON":
+                    await self.actual_device.turn_on()
+                else:
+                    await self.actual_device.turn_off()
+                break
+            except Exception as e:
+                get_logger(__name__).error(f"Error controlling Kasa device {self.get_alias()}: {e}")
+                retry_limit -= 1
 
     async def update_status(self):
-        await self.actual_device.update()
+        retry_limit = 3
+        while retry_limit > 0:
+            try:
+                await self.actual_device.update()
+                break
+            except Exception as e:
+                get_logger(__name__).error(f"Error updating Kasa device {self.get_alias()}: {e}")
+                retry_limit -= 1
 
 class DeviceController:
 
