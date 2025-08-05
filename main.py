@@ -7,7 +7,8 @@ import threading
 app = FastAPI()
 setup_logging()
 logger = get_logger("HomeServer")
-agent_control = AgentControl()
+
+agent_control = None
 
 def agent_loop():
     try:
@@ -17,16 +18,23 @@ def agent_loop():
             agent_control.process_task()
             time.sleep(0.1)
     except Exception as e:
-        logger.info("Agent loop error:", e)
+        logger.error("Agent loop error: %s", e)
         agent_control.stop()
 
-threading.Thread(target=agent_loop, daemon=True).start()
+@app.on_event("startup")
+async def startup_event():
+    # This ensures it's safe to run async/sync bridge logic
+    global agent_control
+    agent_control = AgentControl() 
+
+    # Start the agent loop thread
+    threading.Thread(target=agent_loop, daemon=True).start()
 
 @app.post("/task")
 async def post_task(task: dict):
-    agent_control.push_task(task)  # Implement this method in AgentControl
+    agent_control.push_task(task)
     return {"result": "Task received"}
 
 @app.get("/status")
 async def get_status():
-    return {"statuses": agent_control.get_status()}  # Implement this method
+    return {"statuses": agent_control.get_status()}
