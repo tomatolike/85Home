@@ -7,7 +7,7 @@ import hmac
 import base64
 import uuid
 import requests
-import anyio
+import asyncio
 
 class Device:
     def __init__(self, actual_device):
@@ -180,7 +180,7 @@ class DeviceController:
         self.m_devices.update(await SwitchBotDevice.discorverDevices())
 
     def sync_update_devices(self):
-        anyio.from_thread.run(self.updateDevices)
+        asyncio.run(self.updateDevices)
 
     def getDevicesInfo(self):
         result = []
@@ -198,11 +198,11 @@ class DeviceController:
             retry_time = 5
             while retry_time > 0:
                 try:
-                    anyio.from_thread.run(self.m_devices[alias].update_status)
+                    asyncio.run(self.m_devices[alias].update_status)
                     if self.m_devices[alias].get_status() == statuses[index]:
                         break
-                    anyio.from_thread.run(self.m_devices[alias].change_status, statuses[index])
-                    anyio.from_thread.run(self.m_devices[alias].update_status)
+                    asyncio.run(self.m_devices[alias].change_status, statuses[index])
+                    asyncio.run(self.m_devices[alias].update_status)
                     if self.m_devices[alias].get_status() == statuses[index]:
                         break
                     retry_time -= 1

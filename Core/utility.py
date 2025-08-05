@@ -3,7 +3,7 @@ import logging.handlers
 import os
 from datetime import datetime
 
-def setup_logging():
+def setup_logging(log_name="85home.log"):
     """
     Setup logging configuration with daily rotation and maximum 10 log files.
     Creates logs directory if it doesn't exist.
@@ -28,7 +28,7 @@ def setup_logging():
     )
     
     # File handler with daily rotation
-    log_file = os.path.join(logs_dir, "85home.log")
+    log_file = os.path.join(logs_dir, log_name)
     file_handler = logging.handlers.TimedRotatingFileHandler(
         log_file,
         when='midnight',

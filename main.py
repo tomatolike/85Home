@@ -1,18 +1,16 @@
 from Core.AgentControl import AgentControl
 from Core.utility import setup_logging, get_logger
 import time
-from fastapi import FastAPI
 import threading
-import asyncio
-app = FastAPI()
-setup_logging()
-logger = get_logger("HomeServer")
+import socket
+import json
 
-agent_control = None
+setup_logging()
+logger = get_logger("Home")
+
+agent_control = AgentControl()
 
 def agent_loop():
-    global agent_control
-    agent_control = AgentControl()
     try:
         logger.info("Agent is running...")
         agent_control.start()
@@ -23,18 +21,41 @@ def agent_loop():
         logger.error("Agent loop error: %s", e)
         agent_control.stop()
 
-def after_start():
-    threading.Thread(target=agent_loop, daemon=True).start()
+threading.Thread(target=agent_loop, daemon=True).start()
 
-@app.on_event("startup")
-async def startup_event():
-    asyncio.get_event_loop().call_soon(after_start)
+def handle_client(conn, addr):
+    print(f"Connected by {addr}")
+    with conn:
+        buffer = ""
+        while True:
+            data = conn.recv(1024)
+            if not data:
+                break
+            buffer += data.decode()
+            while "\n" in buffer:
+                line, buffer = buffer.split("\n", 1)
+                try:
+                    request = json.loads(line)
+                    if request["action"] == "task":
+                        agent_control.push_task(request["data"])
+                        response = {"result": "Task received"}
+                    elif request["action"] == "status":
+                        response = {"statuses": agent_control.get_status()}
+                    else:
+                        response = {"error": "Unknown action"}
+                except Exception as e:
+                    response = {"error": str(e)}
+                response_str = json.dumps(response) + "\n"
+                conn.sendall(response_str.encode())
+    print(f"Disconnected {addr}")
 
-@app.post("/task")
-async def post_task(task: dict):
-    agent_control.push_task(task)
-    return {"result": "Task received"}
+def run_agent_control_server(host="127.0.0.1", port=9001):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((host, port))
+        s.listen()
+        print(f"AgentControl server listening on {host}:{port}")
+        while True:
+            conn, addr = s.accept()
+            threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
 
-@app.get("/status")
-async def get_status():
-    return {"statuses": agent_control.get_status()}
+run_agent_control_server()
