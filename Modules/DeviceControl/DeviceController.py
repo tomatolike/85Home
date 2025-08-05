@@ -1,3 +1,4 @@
+import asyncio
 from kasa import Discover
 from Core.utility import get_logger
 import json
@@ -7,7 +8,6 @@ import hmac
 import base64
 import uuid
 import requests
-import asyncio
 
 class Device:
     def __init__(self, actual_device):
@@ -74,11 +74,6 @@ class SwitchBotDevice(Device):
     async def change_status(self, new_status):
         url = f"https://api.switch-bot.com/v1.1/devices/{self.actual_device['deviceId']}/commands"
         payload = {}
-        # if self.actual_device['deviceType'] == 'Smart Lock':
-        #     if new_status == "locked":
-        #         payload['command'] = "lock"
-        #     elif new_status == "unlocked":
-        #         payload['command'] = "unlock"
         if self.actual_device['deviceType'] == 'Bot':
             if new_status == "on":
                 payload['command'] = "turnOn"
@@ -174,13 +169,10 @@ class DeviceController:
         self.logger = get_logger(__name__)
         self.m_devices = {}
 
-    async def updateDevices(self):
+    def updateDevices(self):
         self.m_devices = {}
-        self.m_devices.update(await KasaDevice.discorverDevices())
-        self.m_devices.update(await SwitchBotDevice.discorverDevices())
-
-    def sync_update_devices(self):
-        asyncio.run(self.updateDevices())
+        self.m_devices.update(asyncio.run(KasaDevice.discorverDevices()))
+        self.m_devices.update(asyncio.run(SwitchBotDevice.discorverDevices()))
 
     def getDevicesInfo(self):
         result = []

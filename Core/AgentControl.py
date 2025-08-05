@@ -63,7 +63,7 @@ class AgentControl:
         self.voice_collector.SetCallback(AgentControl.get_voice_input)
         self.task_queue = queue.Queue()
         self.device_controller = DeviceController()
-        self.device_controller.sync_update_devices()
+        self.device_controller.updateDevices()
         self.ai_contactor = AiContactor()
         self.voice_outputer = VoiceOutputer()
         self.wait_for_user_instruction = False
@@ -152,7 +152,7 @@ class AgentControl:
                 self.device_controller.changeDeviceStatus([task['target']], [task['targetStatus']])
         now = time.time()
         if now - self.last_time_update_devices > 300:
-            self.device_controller.sync_update_devices()
+            self.device_controller.updateDevices()
             self.last_time_update_devices = now
 
     def get_status(self):
