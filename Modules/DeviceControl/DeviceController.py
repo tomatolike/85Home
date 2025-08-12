@@ -220,25 +220,26 @@ class DeviceController:
             index += 1
 
     def local_filter(self, text):
-        filter_texts = []
+        
+        text = text.replace(" ", "")
         for device_info in self.getDevicesInfo():
+            filter_texts = []
             filter_texts.append(f"打开{device_info['alias']}")
             filter_texts.append(f"关闭{device_info['alias']}")
             filter_texts.append(f"关上{device_info['alias']}")
 
-        text = text.replace(" ", "")
+            for filter_text in filter_texts:
+                if filter_text in text:
+                    self.logger.info(f"Local filter matched: {filter_text}")
+                    return True, {
+                        "action": "ControlDevice",
+                        "action_params": {
+                            "alias": [device_info['alias']],
+                            "status": ["on" if "打开" in filter_text else "off"]
+                        },
+                        "message": f"好，{'打开' if '打开' in filter_text else '关闭'} {device_info['alias']}"
+                    }
         
-        for filter_text in filter_texts:
-            if filter_text in text:
-                self.logger.info(f"Local filter matched: {filter_text}")
-                return True, {
-                    "action": "ControlDevice",
-                    "action_params": {
-                        "alias": [device_info['alias']],
-                        "status": ["on" if "打开" in filter_text else "off"]
-                    },
-                    "message": f"好，{'打开' if '打开' in filter_text else '关闭'} {device_info['alias']}"
-                }
         return False, {}
 
     def getActionInfo(self):
