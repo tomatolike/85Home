@@ -224,6 +224,7 @@ class DeviceController:
         for device_info in self.getDevicesInfo():
             filter_texts.append(f"打开{device_info['alias']}")
             filter_texts.append(f"关闭{device_info['alias']}")
+            filter_texts.append(f"关上{device_info['alias']}")
         
         for filter_text in filter_texts:
             if filter_text in text:
