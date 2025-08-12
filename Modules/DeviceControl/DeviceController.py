@@ -205,8 +205,6 @@ class DeviceController:
             while retry_time > 0:
                 try:
                     asyncio.run(self.m_devices[alias].update_status())
-                    if self.m_devices[alias].get_status() == statuses[index]:
-                        break
                     asyncio.run(self.m_devices[alias].change_status(statuses[index]))
                     asyncio.run(self.m_devices[alias].update_status())
                     if self.m_devices[alias].get_status() == statuses[index]:
