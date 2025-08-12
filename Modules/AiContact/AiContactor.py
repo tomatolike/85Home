@@ -62,6 +62,15 @@ class AiContactor:
             response = self.parse_response(response.choices[0].message.content)
         self.generate_messages(json.dumps(response), from_type=2)
         return response
+    
+    def add_message_history(self, message, role="user"):
+        self.message_list.append({
+            "time": time.time(),
+            "message":{
+                "role": role,
+                "content": message
+            }
+        })
 
     def generate_system_message(self, action_list_info):
         self.system_message = {

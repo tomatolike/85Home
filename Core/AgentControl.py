@@ -137,6 +137,8 @@ class AgentControl:
                 self.re_generate_system_message()
                 success, action = self.input_local_filter(task['text'])
                 if success:
+                    self.ai_contactor.add_message_history(task['type'])
+                    self.ai_contactor.add_message_history(json.dumps(action), role="agent")
                     self.process_response(action, task['type'] == "chat_message")
                 else:
                     response = self.ai_contactor.communicate(task["text"])
