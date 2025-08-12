@@ -114,6 +114,11 @@ class AgentControl:
         except Exception as e:
             self.logger.error(f"Error processing response: {e}")
             
+    def input_local_filter(self, text):
+        success, action = self.device_controller.local_filter(text)
+        if success:
+            return success, action
+        return False, {}
 
     def process_task(self):
         if not self.task_queue.empty():
@@ -130,8 +135,12 @@ class AgentControl:
                 self.stop_voice_collection()
                 self.logger.info(f"User said: {task['text']}")
                 self.re_generate_system_message()
-                response = self.ai_contactor.communicate(task["text"])
-                self.process_response(response, task['type'] == "chat_message")
+                success, action = self.input_local_filter(task['text'])
+                if success:
+                    self.process_response(action, task['type'] == "chat_message")
+                else:
+                    response = self.ai_contactor.communicate(task["text"])
+                    self.process_response(response, task['type'] == "chat_message")
                 self.start_voice_collection()
             elif task["type"] == "system_message":
                 self.wait_for_user_instruction = False

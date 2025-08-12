@@ -149,16 +149,16 @@ class KasaDevice(Device):
         return self.actual_device.alias
     
     def get_status(self):
-        return "ON" if self.actual_device.is_on else "OFF"
+        return "on" if self.actual_device.is_on else "off"
     
     def get_desc(self):
-        return "Status could be ON or OFF"
+        return "Status could be on or off"
     
     async def change_status(self, new_status):
         retry_limit = 3
         while retry_limit > 0:
             try:
-                if new_status == "ON":
+                if new_status == "on":
                     await self.actual_device.turn_on()
                 else:
                     await self.actual_device.turn_off()
@@ -218,6 +218,25 @@ class DeviceController:
                     self.logger.error(f"Error controlling device {alias}: {e}")
                     break
             index += 1
+
+    def local_filter(self, text):
+        filter_texts = []
+        for device_info in self.getDevicesInfo():
+            filter_texts.append(f"打开{device_info['alias']}")
+            filter_texts.append(f"关闭{device_info['alias']}")
+        
+        for filter_text in filter_texts:
+            if filter_text in text:
+                self.logger.info(f"Local filter matched: {filter_text}")
+                return True, {
+                    "action": "ControlDevice",
+                    "action_params": {
+                        "alias": [device_info['alias']],
+                        "status": ["on" if "打开" in filter_text else "off"]
+                    },
+                    "message": f"好，{'打开' if '打开' in filter_text else '关闭'} {device_info['alias']}"
+                }
+        return False, {}
 
     def getActionInfo(self):
         action_list_info = (
