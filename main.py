@@ -11,17 +11,17 @@ logger = get_logger("Home")
 agent_control = AgentControl()
 
 def agent_loop():
-    try:
-        logger.info("Agent is running...")
-        agent_control.start()
-        while True:
-            agent_control.process_task()
-            time.sleep(0.1)
-    except Exception as e:
-        logger.error("Agent loop error: %s", e)
-        agent_control.stop()
+    # try:
+    logger.info("Agent is running...")
+    agent_control.start()
+    while True:
+        agent_control.process_task()
+        time.sleep(0.1)
+    # except Exception as e:
+    #     logger.error("Agent loop error: %s", e)
+    #     agent_control.stop()
 
-threading.Thread(target=agent_loop, daemon=True).start()
+
 
 def handle_client(conn, addr):
     print(f"Connected by {addr}")
@@ -58,4 +58,6 @@ def run_agent_control_server(host="127.0.0.1", port=9001):
             conn, addr = s.accept()
             threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
 
-run_agent_control_server()
+
+threading.Thread(target=run_agent_control_server, daemon=True).start()
+agent_loop()

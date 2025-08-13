@@ -5,10 +5,10 @@ import json
 import time
 
 class AiContactor:
-    def __init__(self, mode="DEEPSEEK"):
+    def __init__(self, mode="DEEPSEEK", key=""):
         self.logger = get_logger(__name__)
-        self.open_ai_api_key = "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"
-        self.deep_seek_api_key = "sk-fc5a3dbefd0f4171ba455d11bbc6ed11"
+        self.open_ai_api_key = key
+        self.deep_seek_api_key = key
         self.mode = mode
         self.client = None
         if self.mode == "OPENAI":

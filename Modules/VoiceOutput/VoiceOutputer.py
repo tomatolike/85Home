@@ -2,6 +2,7 @@ import platform
 import subprocess
 import pyttsx3
 import re
+import threading
 
 system = platform.system()
 machine = platform.machine()
@@ -14,20 +15,22 @@ class VoiceOutputer:
             # On Raspberry Pi — use espeak directly for real blocking behavior
             self.use_espeak_direct = True
         else:
+            self.lock = threading.Lock()
             self.use_espeak_direct = False
             self.engine = pyttsx3.init()
             self.engine.setProperty('rate', 150)
             self.engine.setProperty('volume', 1)
             if system == "Darwin":
-                self.engine.setProperty('voice', 134)  # macOS default voice
+                self.engine.setProperty('voice', 'com.apple.voice.compact.zh-CN.Tingting')  # macOS default voice
 
     def speak(self, text):
         """Convert text to speech and block until done."""
         if self.use_espeak_direct:
             subprocess.run(['espeak-ng', '-s', '150', '-v', 'cmn-latn-pinyin', text], check=True)
         else:
-            self.engine.say(text)
-            self.engine.runAndWait()
+            with self.lock:
+                self.engine.say(text)
+                self.engine.runAndWait()
 
     def stop(self):
         """Stop speech engine."""
@@ -35,6 +38,8 @@ class VoiceOutputer:
             self.engine.stop()
 
     def getCurrentVolume(self):
+        if system == "Darwin":
+            return None
         output = subprocess.check_output(["amixer", "sget", "Master"]).decode()
         match = re.search(r'\[(\d+)%\]', output)
         if match:
@@ -42,9 +47,12 @@ class VoiceOutputer:
         return None
     
     def setVolume(self, percent):
-        subprocess.call(["amixer", "sset", "Master", f"{percent}%"])
+        if system != "Darwin":
+            subprocess.call(["amixer", "sset", "Master", f"{percent}%"])
 
     def getActionInfo(self):
+        if system == "Darwin":
+            return ""
         current_volume = self.getCurrentVolume()
         if current_volume is not None:
             current_volume = str(current_volume) + "%"

@@ -58,13 +58,17 @@ class AgentControl:
         self.task_queue.put(task)
 
     def __init__(self):
+        configs = {}
+        with open("config.json") as f:
+            configs = json.load(f)
+        AgentControl._agent_name = configs['AgentName']
         self.logger = get_logger(__name__)
-        self.voice_collector = VoiceCollector()
+        self.voice_collector = VoiceCollector(mode="vosk",model_path=configs["Vosk"]["ModelPath"])
         self.voice_collector.SetCallback(AgentControl.get_voice_input)
         self.task_queue = queue.Queue()
-        self.device_controller = DeviceController()
+        self.device_controller = DeviceController(switch_bot_creds=configs["SwitchBot"])
         self.device_controller.updateDevices()
-        self.ai_contactor = AiContactor()
+        self.ai_contactor = AiContactor(mode="DEEPSEEK", key=configs["DeepSeek"]["Key"])
         self.voice_outputer = VoiceOutputer()
         self.wait_for_user_instruction = False
         self.last_time_update_devices = time.time()
@@ -137,8 +141,8 @@ class AgentControl:
                 self.re_generate_system_message()
                 success, action = self.input_local_filter(task['text'])
                 if success:
-                    self.ai_contactor.add_message_history(task['type'])
-                    self.ai_contactor.add_message_history(json.dumps(action), role="agent")
+                    self.ai_contactor.add_message_history(task['text'])
+                    self.ai_contactor.add_message_history(json.dumps(action), role="assistant")
                     self.process_response(action, task['type'] == "chat_message")
                 else:
                     response = self.ai_contactor.communicate(task["text"])

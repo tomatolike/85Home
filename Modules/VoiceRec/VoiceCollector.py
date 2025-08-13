@@ -102,7 +102,7 @@ class VoiceCollector:
 
         self._stream = sd.InputStream(
             samplerate=self.samplerate,
-            blocksize=1600,
+            blocksize=400,
             dtype='int16',
             channels=1,
             callback=self._audio_callback

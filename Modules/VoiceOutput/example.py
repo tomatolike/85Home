@@ -2,7 +2,7 @@ from VoiceOutputer import VoiceOutputer
 import time
 
 outputer = VoiceOutputer()
-outputer.speak("Hello, this is a test of the voice output system.")
+outputer.speak("你好，这是一个测试！")
 print("back")
 print(outputer.getCurrentVolume())
 outputer.setVolume(50)

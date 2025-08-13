@@ -35,6 +35,7 @@ class Device:
 class SwitchBotDevice(Device):
     # Declare empty header dictionary
     apiHeader = {}
+    credentials = {}
 
     def __init__(self, actual_device):
         super().__init__(actual_device)
@@ -110,13 +111,11 @@ class SwitchBotDevice(Device):
 
     @staticmethod
     def authenticate():
-        f = open("credentials")
-        creds = json.load(f)
-        f.close()
+        creds = SwitchBotDevice.credentials
         # open token
-        token = creds['SwitchBot']['Key'] # copy and paste from the SwitchBot app V6.14 or later
+        token = creds['Key'] # copy and paste from the SwitchBot app V6.14 or later
         # secret key
-        secret = creds['SwitchBot']['Secret'] # copy and paste from the SwitchBot app V6.14 or later
+        secret = creds['Secret'] # copy and paste from the SwitchBot app V6.14 or later
         nonce = uuid.uuid4()
         t = int(round(time.time() * 1000))
         string_to_sign = '{}{}{}'.format(token, t, nonce)
@@ -179,9 +178,10 @@ class KasaDevice(Device):
 
 class DeviceController:
 
-    def __init__(self):
+    def __init__(self, switch_bot_creds):
         self.logger = get_logger(__name__)
         self.m_devices = {}
+        SwitchBotDevice.credentials = switch_bot_creds
 
     def updateDevices(self):
         self.m_devices = {}
