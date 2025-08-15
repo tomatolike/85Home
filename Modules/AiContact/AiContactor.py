@@ -95,11 +95,11 @@ class AiContactor:
                 + action_list_info
             )
         }
-        self.logger.info(f"System message generated: {self.system_message['content']}")
+        #self.logger.info(f"System message generated: {self.system_message['content']}")
     
     def clean_up_messages(self):
         now = time.time()
-        i = 1
+        i = 0
         while i < len(self.message_list):
             if now - self.message_list[i]["time"] > 3600:
                 self.message_list.pop(i)
@@ -107,10 +107,6 @@ class AiContactor:
                 i += 1
 
     def generate_messages(self, user_message, from_type):
-        self.message_list.append({
-            "time": 0,
-            "message": self.system_message
-        })
         sender = "user"
         if from_type == 1:
             pass
@@ -128,7 +124,16 @@ class AiContactor:
         self.message_list.append(new_message)
         self.clean_up_messages()
         
-        final_messages = []
+        final_messages = [self.system_message]
         for msg in self.message_list:
             final_messages.append(msg["message"])
         return final_messages
+    
+    def get_message_list(self):
+        message_list = [{
+            "time": time.time(),
+            "message":self.system_message
+        }]
+
+        message_list.expend(self.message_list)
+        return message_list

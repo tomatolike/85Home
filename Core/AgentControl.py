@@ -172,7 +172,7 @@ class AgentControl:
 
     def get_status(self):
         status = {
-            "messages": self.ai_contactor.message_list,
+            "messages": self.ai_contactor.get_message_list(),
             "devices": self.device_controller.getDevicesInfo(),
             "robot": {
                 "connected": self.robot_server.is_connected,
