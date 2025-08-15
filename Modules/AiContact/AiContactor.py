@@ -135,5 +135,5 @@ class AiContactor:
             "message":self.system_message
         }]
 
-        message_list.expend(self.message_list)
+        message_list += self.message_list
         return message_list
