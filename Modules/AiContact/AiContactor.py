@@ -130,10 +130,7 @@ class AiContactor:
         return final_messages
     
     def get_message_list(self):
-        message_list = [{
-            "time": time.time(),
-            "message":self.system_message
-        }]
+        message_list = []
 
         message_list += self.message_list
         return message_list

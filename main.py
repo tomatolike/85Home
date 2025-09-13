@@ -34,8 +34,10 @@ def handle_client(conn, addr):
             buffer += data.decode()
             while "\n" in buffer:
                 line, buffer = buffer.split("\n", 1)
+                response = {}
                 try:
                     request = json.loads(line)
+                    
                     if request["action"] == "server_task":
                         agent_control.push_task(request["data"])
                         response = {"result": "Task received"}
