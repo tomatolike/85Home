@@ -66,7 +66,7 @@ class AgentControl:
         self.voice_collector = VoiceCollector(mode="vosk",model_path=configs["Vosk"]["ModelPath"])
         self.voice_collector.SetCallback(AgentControl.get_voice_input)
         self.task_queue = queue.Queue()
-        self.device_controller = DeviceController(switch_bot_creds=configs["SwitchBot"], whisker_creds=configs['Whisker'])
+        self.device_controller = DeviceController(switch_bot_creds=configs["SwitchBot"], whisker_creds=configs['Whisker'], roborock_creds=configs['Roborock'])
         self.device_controller.updateDevices()
         self.ai_contactor = AiContactor(mode="DEEPSEEK", key=configs["DeepSeek"]["Key"])
         self.voice_outputer = VoiceOutputer()

@@ -9,6 +9,9 @@ import hmac
 import base64
 import uuid
 import requests
+from roborock import HomeDataProduct, DeviceData, RoborockCommand
+from roborock.version_1_apis import RoborockMqttClientV1, RoborockLocalClientV1
+from roborock.web_api import RoborockApiClient
 
 class Device:
     def __init__(self, actual_device):
@@ -177,6 +180,105 @@ class KasaDevice(Device):
                 get_logger(__name__).error(f"Error updating Kasa device {self.get_alias()}: {e}")
                 retry_limit -= 1
 
+class RoborockDevice(Device):
+    credentials = {}
+    
+    @staticmethod
+    async def discorverDevices():
+        results = {}
+        try:
+            web_api = RoborockApiClient(username=RoborockDevice.credentials["username"])
+            user_data = await web_api.pass_login(password=RoborockDevice.credentials["password"])
+
+            home_data = await web_api.get_home_data_v2(user_data)
+            # Get product ids:
+            product_info: dict[str, HomeDataProduct] = {
+                    product.id: product for product in home_data.products
+                }
+            for device in home_data.devices:
+                device_data = DeviceData(device, product_info[device.product_id].model)
+                name = device_data.device.name
+                results[name] = RoborockDevice(name)
+        except Exception as e:
+            get_logger(__name__).error(f"Error connecting to Roborock: {e}")
+    
+    def __init__(self, name):
+        super().__init__(None)
+        self.name = name
+
+    async def do_thing(self, what_thing):
+        try:
+            web_api = RoborockApiClient(username=RoborockDevice.credentials["username"])
+            user_data = await web_api.pass_login(password=RoborockDevice.credentials["password"])
+
+            home_data = await web_api.get_home_data_v2(user_data)
+            # Get product ids:
+            product_info: dict[str, HomeDataProduct] = {
+                    product.id: product for product in home_data.products
+                }
+            for device in home_data.devices:
+                device_data = DeviceData(device, product_info[device.product_id].model)
+                name = device_data.device.name
+                if name == self.name:
+                    mqtt_client = RoborockMqttClientV1(user_data, device_data)
+                    networking = await mqtt_client.get_networking()
+                    local_device_data = DeviceData(device, product_info[device.product_id].model, networking.ip)
+                    local_client = RoborockLocalClientV1(local_device_data)
+                    if what_thing == "get_status":
+                        status = await local_client.get_status()
+                        if status == 8 or status == 100 or status == 103 or status == 12 or status == 101 or status == 15:
+                            return "home"
+                        elif status == 5:
+                            return "cleaning"
+                        elif status == 3 or status == 10:
+                            return "stopped"
+                        else:
+                            return "unknown"
+                    elif what_thing == "clean":
+                        await local_client.send_command(RoborockCommand.APP_START)
+                    elif what_thing == "stop":
+                        await local_client.send_command(RoborockCommand.APP_PAUSE)
+                    elif what_thing == "return":
+                        await local_client.send_command(RoborockCommand.APP_CHARGE)
+                    else:
+                        pass
+                    break
+            return "Done"
+        except Exception as e:
+            get_logger(__name__).error(f"Failed to connect Roborock {e}")
+            return "Done"
+        finally:
+            return "Done"
+    
+    def get_alias(self):
+        return self.name
+    
+    def get_status(self):
+        return asyncio.run(self.do_thing("get_status"))
+    
+    def get_desc(self):
+        return "Status could be home, cleaning, stopped or unknown."
+    
+    async def change_status(self, new_status):
+        retry_limit = 3
+        while retry_limit > 0:
+            try:
+                if new_status == "home":
+                    await self.do_thing("return")
+                elif new_status == "cleaning":
+                    await self.do_thing("clean")
+                elif new_status == "stopped":
+                    await self.do_thing("stop")
+                else:
+                    pass
+                break
+            except Exception as e:
+                get_logger(__name__).error(f"Error controlling Roborock device {self.get_alias()}: {e}")
+                retry_limit -= 1
+
+    async def update_status(self):
+        pass
+
 class WhiskerDevice(Device):
     credentials = {}
     
@@ -268,17 +370,19 @@ class WhiskerDevice(Device):
 
 class DeviceController:
 
-    def __init__(self, switch_bot_creds, whisker_creds):
+    def __init__(self, switch_bot_creds, whisker_creds, roborock_creds):
         self.logger = get_logger(__name__)
         self.m_devices = {}
         SwitchBotDevice.credentials = switch_bot_creds
         WhiskerDevice.credentials = whisker_creds
+        RoborockDevice.credentials = roborock_creds
 
     def updateDevices(self):
         self.m_devices = {}
         self.m_devices.update(asyncio.run(KasaDevice.discorverDevices()))
         self.m_devices.update(asyncio.run(SwitchBotDevice.discorverDevices()))
         self.m_devices.update(asyncio.run(WhiskerDevice.discorverDevices()))
+        self.m_devices.update(asyncio.run(RoborockDevice.discorverDevices()))
 
     def getDevicesInfo(self):
         result = []
