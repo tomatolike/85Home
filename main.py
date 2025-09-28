@@ -25,7 +25,6 @@ def agent_loop():
 
 
 def handle_client(conn, addr):
-    print(f"Connected by {addr}")
     with conn:
         buffer = ""
         while True:
@@ -50,7 +49,6 @@ def handle_client(conn, addr):
                     response = {"error": str(e)}
                 response_str = json.dumps(response) + "\n"
                 conn.sendall(response_str.encode())
-    print(f"Disconnected {addr}")
 
 def run_agent_control_server(host="127.0.0.1", port=9001):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
