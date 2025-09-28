@@ -19,10 +19,10 @@ class AgentControl:
 
     @staticmethod
     def is_calling_agent(text):
-        if AgentControl._agent_name in text:
+        if AgentControl._agent_name == text:
             return True
         text = text.replace(" ", "")
-        if AgentControl._agent_name in text:
+        if AgentControl._agent_name == text:
             return True
         return False
 

@@ -40,6 +40,8 @@ class VoiceCollector:
         self._thread = None
         self._stream = None
         self.q = queue.Queue()
+        self.max_queue_bytes = self.samplerate * 10 * 2
+        self.current_queue_bytes = 0
 
         if self.mode == "vosk":
             if not KaldiRecognizer:
@@ -57,20 +59,36 @@ class VoiceCollector:
 
     def _audio_callback(self, indata, frames, time, status):
         if self.mode == "vosk":
-            self.q.put(bytes(indata))
+            try:
+                chunk = bytes(indata)
+
+                # If queue already has > 10s, drop new data
+                if self.current_queue_bytes + len(chunk) <= self.max_queue_bytes:
+                    self.q.put(chunk)
+                    self.current_queue_bytes += len(chunk)
+                else:
+                    # Drop the chunk (too much backlog)
+                    pass
+            except Exception as e:
+                pass
         elif self.mode == "whispercpp":
             # Convert to numpy array and store in buffer
             self.audio_buffer.append(indata.copy())
 
     def _monitor_loop(self):
         if self.mode == "vosk":
-            while self._running:
-                data = self.q.get()
-                if self.recognizer.AcceptWaveform(data):
-                    result = json.loads(self.recognizer.Result())
-                    text = result.get("text", "")
-                    if text and self._callback:
-                        self._callback(text)
+            try:
+                while self._running:
+                    data = self.q.get()
+                    self.current_queue_bytes -= len(data)
+                    if self.recognizer.AcceptWaveform(data):
+                        result = json.loads(self.recognizer.Result())
+                        text = result.get("text", "")
+                        if text and self._callback:
+                            self._callback(text)
+            except Exception as e:
+                #logger.error(f"Voicr thread error:{e}")
+                pass
 
         elif self.mode == "whispercpp":
             chunk_size = int(self.samplerate * self.buffer_duration_sec)

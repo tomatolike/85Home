@@ -220,6 +220,9 @@ class DeviceController:
     def local_filter(self, text):
         
         text = text.replace(" ", "")
+        aliases = []
+        statuses = []
+        message = "好，"
         for device_info in self.getDevicesInfo():
             filter_texts = []
             filter_texts.append(f"打开{device_info['alias']}")
@@ -229,13 +232,18 @@ class DeviceController:
             for filter_text in filter_texts:
                 if filter_text in text:
                     self.logger.info(f"Local filter matched: {filter_text}")
-                    return True, {
+                    aliases.append(device_info['alias'])
+                    statuses.append("on" if "打开" in filter_text else "off")
+                    message += f"{'打开' if '打开' in filter_text else '关闭'} {device_info['alias']}，"
+                
+        if len(aliases) > 0:
+            return True, {
                         "action": "ControlDevice",
                         "action_params": {
-                            "alias": [device_info['alias']],
-                            "status": ["on" if "打开" in filter_text else "off"]
+                            "alias": aliases,
+                            "status": statuses
                         },
-                        "message": f"好，{'打开' if '打开' in filter_text else '关闭'} {device_info['alias']}"
+                        "message": message
                     }
         
         return False, {}

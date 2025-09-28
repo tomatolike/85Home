@@ -15,10 +15,11 @@ def agent_loop():
     logger.info("Agent is running...")
     agent_control.start()
     while True:
-        agent_control.process_task()
-        time.sleep(0.1)
-    # except Exception as e:
-    #     logger.error("Agent loop error: %s", e)
+        try:
+            agent_control.process_task()
+            time.sleep(0.1)
+        except Exception as e:
+            logger.error("Agent loop error: %s", e)
     #     agent_control.stop()
 
 
