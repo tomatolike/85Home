@@ -1,6 +1,7 @@
 import asyncio
 from kasa import Discover
 from Core.utility import get_logger
+from pylitterbot import Account
 import json
 import time
 import hashlib
@@ -176,17 +177,108 @@ class KasaDevice(Device):
                 get_logger(__name__).error(f"Error updating Kasa device {self.get_alias()}: {e}")
                 retry_limit -= 1
 
+class WhiskerDevice(Device):
+    credentials = {}
+    
+    @staticmethod
+    async def discorverDevices():
+        result = {}
+        try:
+            account = Account()
+            # Connect to the API and load robots.
+            await account.connect(username=WhiskerDevice.credentials['username'], password=WhiskerDevice.credentials['password'], load_robots=True)
+
+            # Print robots associated with account.
+            for robot in account.robots:
+                result[robot.name] = WhiskerDevice(robot)
+        except Exception as e:
+            get_logger(__name__).error(f"Failed to connect Whisker {e}")
+        finally:
+            await account.disconnect()
+        return result
+    
+    def __init__(self, actual_device):
+        super().__init__(actual_device)
+        self.name = actual_device.name
+
+    async def do_thing(self, what_thing):
+        try:
+            account = Account()
+            # Connect to the API and load robots.
+            await account.connect(username=WhiskerDevice.credentials['username'], password=WhiskerDevice.credentials['password'], load_robots=True)
+
+            # Print robots associated with account.
+            for robot in account.robots:
+                if robot.name == self.name:
+                    if what_thing == "get_status":
+                        status = robot.status
+                        if status.value == "RDY":
+                            return "on"
+                        elif status.value == "OFF":
+                            return "off"
+                        elif status.value == "CCP":
+                            return "cleaning"
+                        else:
+                            return "unknown"
+                    elif what_thing == "turn_on":
+                        await robot.set_power_status(True)
+                    elif what_thing == "turn_off":
+                        await robot.set_power_status(False)
+                    elif what_thing == "clean":
+                        await robot.start_cleaning()
+                    else:
+                        pass
+                    break
+            return "Done"
+        except Exception as e:
+            get_logger(__name__).error(f"Failed to connect Whisker {e}")
+            return "Done"
+        finally:
+            await account.disconnect()
+            return "Done"
+    
+    def get_alias(self):
+        return self.name
+    
+    def get_status(self):
+        return asyncio.run(self.do_thing("get_status"))
+    
+    def get_desc(self):
+        return "Status could be on, off, cleaning or unknown."
+    
+    async def change_status(self, new_status):
+        retry_limit = 3
+        while retry_limit > 0:
+            try:
+                if new_status == "on":
+                    await self.do_thing("turn_on")
+                elif new_status == "off":
+                    await self.do_thing("turn_off")
+                elif new_status == "cleaning":
+                    await self.do_thing("clean")
+                else:
+                    pass
+                break
+            except Exception as e:
+                get_logger(__name__).error(f"Error controlling Whisker device {self.get_alias()}: {e}")
+                retry_limit -= 1
+
+    async def update_status(self):
+        pass
+
 class DeviceController:
 
-    def __init__(self, switch_bot_creds):
+    def __init__(self, switch_bot_creds, whisker_creds):
         self.logger = get_logger(__name__)
         self.m_devices = {}
         SwitchBotDevice.credentials = switch_bot_creds
+        WhiskerDevice.credentials = whisker_creds
 
     def updateDevices(self):
         self.m_devices = {}
         self.m_devices.update(asyncio.run(KasaDevice.discorverDevices()))
         self.m_devices.update(asyncio.run(SwitchBotDevice.discorverDevices()))
+        self.m_devices.update(asyncio.run(WhiskerDevice.discorverDevices()))
 
     def getDevicesInfo(self):
         result = []

@@ -10,3 +10,5 @@ spotify-cli-linux==1.9.1
 fastapi==0.116.1
 uvicorn==0.35.0
 pydantic==2.11.7
+pylitterbot==2024.2.4
+python-roborock==2.47.1
