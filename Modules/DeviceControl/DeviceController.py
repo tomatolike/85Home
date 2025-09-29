@@ -201,10 +201,12 @@ class RoborockDevice(Device):
                 results[name] = RoborockDevice(name)
         except Exception as e:
             get_logger(__name__).error(f"Error connecting to Roborock: {e}")
+        return results
     
     def __init__(self, name):
         super().__init__(None)
         self.name = name
+        self.status = "unknown"
 
     async def do_thing(self, what_thing):
         try:
@@ -224,17 +226,10 @@ class RoborockDevice(Device):
                     networking = await mqtt_client.get_networking()
                     local_device_data = DeviceData(device, product_info[device.product_id].model, networking.ip)
                     local_client = RoborockLocalClientV1(local_device_data)
-                    if what_thing == "get_status":
-                        status = await local_client.get_status()
-                        if status == 8 or status == 100 or status == 103 or status == 12 or status == 101 or status == 15:
-                            return "home"
-                        elif status == 5:
-                            return "cleaning"
-                        elif status == 3 or status == 10:
-                            return "stopped"
-                        else:
-                            return "unknown"
-                    elif what_thing == "clean":
+                    
+                    status = await local_client.get_status()
+                    
+                    if what_thing == "clean":
                         await local_client.send_command(RoborockCommand.APP_START)
                     elif what_thing == "stop":
                         await local_client.send_command(RoborockCommand.APP_PAUSE)
@@ -242,6 +237,19 @@ class RoborockDevice(Device):
                         await local_client.send_command(RoborockCommand.APP_CHARGE)
                     else:
                         pass
+                    
+                    time.sleep(5)
+                    status = await local_client.get_status()
+                    status = status.state
+                    if status == 8 or status == 100 or status == 103 or status == 12 or status == 101 or status == 15 or status == 6:
+                        self.status = "docked"
+                    elif status == 5:
+                        self.status = "cleaning"
+                    elif status == 3 or status == 10:
+                        self.status = "stopped"
+                    else:
+                        self.status = "unknown"
+                    print(f"device status {status} and self {self.status}")
                     break
             return "Done"
         except Exception as e:
@@ -254,16 +262,16 @@ class RoborockDevice(Device):
         return self.name
     
     def get_status(self):
-        return asyncio.run(self.do_thing("get_status"))
+        return self.status
     
     def get_desc(self):
-        return "Status could be home, cleaning, stopped or unknown."
+        return "Status could be docked, cleaning, stopped or unknown. Changing the status to docked means returning it to dock."
     
     async def change_status(self, new_status):
         retry_limit = 3
         while retry_limit > 0:
             try:
-                if new_status == "home":
+                if new_status == "docked":
                     await self.do_thing("return")
                 elif new_status == "cleaning":
                     await self.do_thing("clean")
@@ -277,7 +285,8 @@ class RoborockDevice(Device):
                 retry_limit -= 1
 
     async def update_status(self):
-        pass
+       #await self.do_thing("get_status")
+       pass
 
 class WhiskerDevice(Device):
     credentials = {}
@@ -400,6 +409,7 @@ class DeviceController:
             retry_time = 5
             while retry_time > 0:
                 try:
+                    print(f"Try Change {alias} to {statuses[index]}")
                     asyncio.run(self.m_devices[alias].update_status())
                     asyncio.run(self.m_devices[alias].change_status(statuses[index]))
                     asyncio.run(self.m_devices[alias].update_status())
