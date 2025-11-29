@@ -3,6 +3,7 @@ from Modules.DeviceControl.DeviceController import DeviceController
 from Modules.AiContact.AiContactor import AiContactor
 from Modules.VoiceOutput.VoiceOutputer import VoiceOutputer
 from Modules.RobotServer.RobotTCPServer import RobotTCPServer
+from Modules.Timer.Timer import SetTimer
 from Core.utility import get_logger
 import queue
 import json
@@ -70,6 +71,7 @@ class AgentControl:
         self.device_controller.updateDevices()
         self.ai_contactor = AiContactor(mode="DEEPSEEK", key=configs["DeepSeek"]["Key"])
         self.voice_outputer = VoiceOutputer()
+        self.set_timer = SetTimer()
         self.wait_for_user_instruction = False
         self.last_time_update_devices = time.time()
         self.robot_server = RobotTCPServer(host='0.0.0.0', port=9000, callback=AgentControl.get_robot_status)
@@ -79,6 +81,7 @@ class AgentControl:
     def re_generate_system_message(self):
         action_list_info = self.device_controller.getActionInfo()
         action_list_info += self.voice_outputer.getActionInfo()
+        action_list_info += self.set_timer.getActionInfo()
         self.ai_contactor.generate_system_message(action_list_info)
 
     def process_response(self, action, no_sound=False):
@@ -112,6 +115,10 @@ class AgentControl:
                     self.push_task(task)
                 else:
                     self.voice_outputer.setVolume(action["action_params"]["percent"])
+            elif action["action"] == "SetTimer":
+                if action["message"] != "" and not no_sound:
+                    self.voice_outputer.speak(action["message"])
+                self.set_timer.add_timer(action["action_params"]["timestamp"], action["action_params"]["actions"])
             else:
                 raise ValueError(f"Unknown action: {action['action']}")
 
@@ -169,6 +176,10 @@ class AgentControl:
         if now - self.last_time_update_devices > 300:
             self.device_controller.updateDevices()
             self.last_time_update_devices = now
+        due_timers = self.set_timer.execute_timers()
+        for timer in due_timers:
+            for action in timer.actions:
+                self.push_task(action)
 
     def get_status(self):
         status = {

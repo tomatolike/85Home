@@ -391,7 +391,7 @@ class DeviceController:
         self.m_devices.update(asyncio.run(KasaDevice.discorverDevices()))
         self.m_devices.update(asyncio.run(SwitchBotDevice.discorverDevices()))
         self.m_devices.update(asyncio.run(WhiskerDevice.discorverDevices()))
-        self.m_devices.update(asyncio.run(RoborockDevice.discorverDevices()))
+        #self.m_devices.update(asyncio.run(RoborockDevice.discorverDevices()))
 
     def getDevicesInfo(self):
         result = []
@@ -434,13 +434,14 @@ class DeviceController:
             filter_texts.append(f"打开{device_info['alias']}")
             filter_texts.append(f"关闭{device_info['alias']}")
             filter_texts.append(f"关上{device_info['alias']}")
+            filter_texts.append(f"清洁{device_info['alias']}")
 
             for filter_text in filter_texts:
                 if filter_text in text:
                     self.logger.info(f"Local filter matched: {filter_text}")
                     aliases.append(device_info['alias'])
-                    statuses.append("on" if "打开" in filter_text else "off")
-                    message += f"{'打开' if '打开' in filter_text else '关闭'} {device_info['alias']}，"
+                    statuses.append("on" if "打开" in filter_text else ("cleaning" if "清洁" in filter_text else "off"))
+                    message += f"{"打开" if "打开" in filter_text else ("清洁" if "清洁" in filter_text else "关闭")} {device_info['alias']}，"
                 
         if len(aliases) > 0:
             return True, {
