@@ -441,7 +441,7 @@ class DeviceController:
                     self.logger.info(f"Local filter matched: {filter_text}")
                     aliases.append(device_info['alias'])
                     statuses.append("on" if "打开" in filter_text else ("cleaning" if "清洁" in filter_text else "off"))
-                    message += f"{"打开" if "打开" in filter_text else ("清洁" if "清洁" in filter_text else "关闭")} {device_info['alias']}，"
+                    message += f"{'打开' if '打开' in filter_text else ('清洁' if '清洁' in filter_text else '关闭')} {device_info['alias']}，"
                 
         if len(aliases) > 0:
             return True, {
