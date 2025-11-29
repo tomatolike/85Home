@@ -72,7 +72,7 @@ def send_single_email(title, toe, content):
     frome = "lovetoamtoboy@gmail.com"
     msg['From'] = frome
     msg['To'] = toe
-    msg.attach(MIMEText(content))
+    msg.attach(MIMEText(content,_subtype="plain", _charset="utf-8"))
 
     try:
         s = smtplib.SMTP("smtp.gmail.com", 587)
