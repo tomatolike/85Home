@@ -74,7 +74,7 @@ class SetTimer:
                 except Exception as e:
                     logger.error(f"Error deleting timer file {file_path}: {e}")
                 if timer.emailNotify:
-                    send_email("时间到了！", json.dumps(timer.actions, indent=2))
+                    send_email("时间到了！", json.dumps(timer.actions, indent=2, ensure_ascii=False))
             else:
                 remaining_timers.append(timer)
         
