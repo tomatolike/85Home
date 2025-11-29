@@ -311,6 +311,7 @@ class WhiskerDevice(Device):
     def __init__(self, actual_device):
         super().__init__(actual_device)
         self.name = actual_device.name
+        self.status_ = "unknown"
 
     async def do_thing(self, what_thing):
         try:
@@ -352,7 +353,7 @@ class WhiskerDevice(Device):
         return self.name
     
     def get_status(self):
-        return asyncio.run(self.do_thing("get_status"))
+        return self.status_
     
     def get_desc(self):
         return "Status could be on, off, cleaning or unknown."
@@ -375,7 +376,7 @@ class WhiskerDevice(Device):
                 retry_limit -= 1
 
     async def update_status(self):
-        pass
+        self.status_ = self.do_thing("get_status")
 
 class DeviceController:
 
@@ -424,11 +425,11 @@ class DeviceController:
             index += 1
 
     def local_filter(self, text):
-        
         text = text.replace(" ", "")
         aliases = []
         statuses = []
         message = "好，"
+        filtered_len = 0
         for device_info in self.getDevicesInfo():
             filter_texts = []
             filter_texts.append(f"打开{device_info['alias']}")
@@ -438,11 +439,15 @@ class DeviceController:
 
             for filter_text in filter_texts:
                 if filter_text in text:
+                    filtered_len += len(filter_text)
                     self.logger.info(f"Local filter matched: {filter_text}")
                     aliases.append(device_info['alias'])
                     statuses.append("on" if "打开" in filter_text else ("cleaning" if "清洁" in filter_text else "off"))
                     message += f"{'打开' if '打开' in filter_text else ('清洁' if '清洁' in filter_text else '关闭')} {device_info['alias']}，"
-                
+        
+        if len(text) - filtered_len >= 3:
+            return False, {}
+
         if len(aliases) > 0:
             return True, {
                         "action": "ControlDevice",
