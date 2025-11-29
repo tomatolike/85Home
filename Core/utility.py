@@ -68,7 +68,7 @@ def send_email(tiitle, content):
 
 def send_single_email(title, toe, content):
     msg = MIMEMultipart()
-    msg['Subject'] = "把握: %s" % reason
+    msg['Subject'] = "把握: %s" % title
     frome = "lovetoamtoboy@gmail.com"
     msg['From'] = frome
     msg['To'] = toe
