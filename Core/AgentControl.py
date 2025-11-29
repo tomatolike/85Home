@@ -118,7 +118,7 @@ class AgentControl:
             elif action["action"] == "SetTimer":
                 if action["message"] != "" and not no_sound:
                     self.voice_outputer.speak(action["message"])
-                self.set_timer.add_timer(action["action_params"]["timestamp"], action["action_params"]["actions"])
+                self.set_timer.add_timer(action["action_params"]["timestamp"], action["action_params"]["actions"], action["action_params"]["emailNotify"])
             else:
                 raise ValueError(f"Unknown action: {action['action']}")
 
