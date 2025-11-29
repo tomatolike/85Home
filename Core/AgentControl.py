@@ -172,14 +172,24 @@ class AgentControl:
                 self.robot_server.send_command("car", task['command'])
             elif task['type'] == "client_device":
                 self.device_controller.changeDeviceStatus([task['target']], [task['targetStatus']])
+            elif task['type'] == "timer_action":
+                self.logger.info(f"Processing timer action: {task['action']}")
+                self.stop_voice_collection()
+                self.process_response(task['action'])
+                self.start_voice_collection()
         now = time.time()
         if now - self.last_time_update_devices > 300:
             self.device_controller.updateDevices()
             self.last_time_update_devices = now
         due_timers = self.set_timer.execute_timers()
         for timer in due_timers:
+            self.logger.info(f"Executing timer set for {timer.timestamp}")
             for action in timer.actions:
-                self.push_task(action)
+                self.logger.info(f"Push timer task: {action}")
+                self.push_task({
+                    "type": "timer_action",
+                    "action": action
+                })
 
     def get_status(self):
         status = {
