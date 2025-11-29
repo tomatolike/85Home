@@ -40,7 +40,6 @@ class SetTimer:
 
     def add_timer(self, timestamp, actions):
         # Create a new timer object, put it into the queue and save it to a local file
-        timestamp = int(timestamp + datetime.now().timestamp())
         timer = Timer(timestamp, actions)
         self.timers.append(timer)
         self.timers.sort(key=lambda t: t.timestamp)
@@ -86,7 +85,7 @@ class SetTimer:
         "Action: SetTimer\n"
         "description: you can set a timer to do some actions in the future\n"
         "parameters:\n"
-        "- timestamp: the timestamp that the actions should be execute, precise in seconds, for example it should 30 if we want to execute acitons 30 seconds later\n"
+        f"- timestamp: the unix timestamp that the actions should be execute, precise in seconds. current unix timestamp is {datetime.now().timestamp()}\n"
         "- actions: a list of actions, please note each action should also be a valid action that home agent can execute (contains message, action, action_params), and can't be SetTimer (no nested SetTimer)\n"
         + "\n\n"
     )
