@@ -21,8 +21,7 @@ function App() {
   const [devices, setDevices] = useState([]);
   const [robotStatuses, setRobotStatuses] = useState([]);
   const [screensaverActive, setScreensaverActive] = useState(false);
-  const [screensaverImages, setScreensaverImages] = useState([]);
-  const [screensaverTimeout, setScreensaverTimeout] = useState(5); // Default 5 minutes
+  const [screensaverTimeout, setScreensaverTimeout] = useState(1); // Default 5 minutes
   const lastActivityTime = useRef(Date.now());
   const inactivityTimer = useRef(null);
   const countdownTimer = useRef(null);
@@ -32,19 +31,13 @@ function App() {
     setApi(new ApiService(`http://${serverAddress}`));
   }, [serverAddress]);
 
-  // Load screensaver config and images
+  // Load screensaver config
   useEffect(() => {
     const loadScreensaverConfig = async () => {
       try {
-        // Load config first
         const configResponse = await fetch(`http://${serverAddress}/api/screensaver/config`);
         const configData = await configResponse.json();
         setScreensaverTimeout(configData.timeoutMinutes || 5);
-        
-        // Then load images
-        const imagesResponse = await fetch(`http://${serverAddress}/api/screensaver/images`);
-        const imagesData = await imagesResponse.json();
-        setScreensaverImages(imagesData.images || []);
       } catch (error) {
         console.error('Failed to load screensaver config:', error);
       }
@@ -253,7 +246,7 @@ function App() {
     <div className="App">
       {screensaverActive && (
         <Screensaver
-          images={screensaverImages}
+          serverAddress={serverAddress}
           onInteraction={handleScreensaverInteraction}
         />
       )}

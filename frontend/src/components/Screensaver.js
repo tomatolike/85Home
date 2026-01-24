@@ -1,35 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import './Screensaver.css';
 
-function Screensaver({ images, onInteraction }) {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [imageUrls, setImageUrls] = useState([]);
+function Screensaver({ serverAddress, onInteraction }) {
+  const [currentImageUrl, setCurrentImageUrl] = useState(null);
+  const [hasImages, setHasImages] = useState(true);
 
-  useEffect(() => {
-    // Load images
-    const loadImages = async () => {
-      const urls = images.map((img) => `/api/screensaver/image/${encodeURIComponent(img)}`);
-      setImageUrls(urls);
-      // Shuffle images for random order
-      const shuffled = [...urls].sort(() => Math.random() - 0.5);
-      setImageUrls(shuffled);
-    };
-
-    if (images && images.length > 0) {
-      loadImages();
+  const loadRandomImage = async () => {
+    try {
+      const response = await fetch(`http://${serverAddress}/api/screensaver/random-image`);
+      const data = await response.json();
+      if (data.imageUrl) {
+        // Construct full URL with cache busting to ensure new image loads
+        const fullUrl = `http://${serverAddress}${data.imageUrl}?t=${Date.now()}`;
+        setCurrentImageUrl(fullUrl);
+        setHasImages(true);
+      } else {
+        setHasImages(false);
+      }
+    } catch (error) {
+      console.error('Failed to load screensaver image:', error);
+      setHasImages(false);
     }
-  }, [images]);
+  };
 
   useEffect(() => {
-    if (imageUrls.length === 0) return;
+    // Load initial image
+    loadRandomImage();
 
     // Change image every 30 seconds
     const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % imageUrls.length);
+      loadRandomImage();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [imageUrls]);
+  }, [serverAddress]);
 
   // Handle any user interaction to exit screensaver
   const handleInteraction = (e) => {
@@ -37,7 +41,7 @@ function Screensaver({ images, onInteraction }) {
     onInteraction();
   };
 
-  if (imageUrls.length === 0) {
+  if (!hasImages || !currentImageUrl) {
     return (
       <div className="screensaver" onClick={handleInteraction}>
         <div className="screensaver-placeholder">
@@ -58,12 +62,13 @@ function Screensaver({ images, onInteraction }) {
       tabIndex={0}
     >
       <img
-        src={imageUrls[currentImageIndex]}
-        alt={`Screensaver ${currentImageIndex + 1}`}
+        src={currentImageUrl}
+        alt="Screensaver"
         className="screensaver-image"
         onError={(e) => {
-          // If image fails to load, skip to next
-          setCurrentImageIndex((prev) => (prev + 1) % imageUrls.length);
+          // If image fails to load, try to load another one
+          console.error('Failed to load screensaver image, trying another...');
+          loadRandomImage();
         }}
       />
     </div>

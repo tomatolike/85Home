@@ -164,12 +164,11 @@ async def get_screensaver_config_api():
         "imageFolder": get_screensaver_config()
     })
 
-@app.get("/api/screensaver/images")
-async def get_screensaver_images():
-    """Get list of available screensaver images"""
+def _get_all_images():
+    """Get all available screensaver images from folder"""
     folder = get_screensaver_config()
     if not os.path.exists(folder):
-        return JSONResponse({"images": []})
+        return []
     
     # Supported image formats
     extensions = ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp", "*.webp"]
@@ -178,9 +177,22 @@ async def get_screensaver_images():
         images.extend(glob.glob(os.path.join(folder, ext)))
         images.extend(glob.glob(os.path.join(folder, ext.upper())))
     
-    # Convert to relative paths for the API
-    image_paths = [os.path.relpath(img, folder) for img in images]
-    return JSONResponse({"images": image_paths})
+    return images
+
+@app.get("/api/screensaver/random-image")
+async def get_random_screensaver_image():
+    """Get a random screensaver image URL"""
+    images = _get_all_images()
+    if not images:
+        return JSONResponse({"error": "No images found", "imageUrl": None})
+    
+    # Pick a random image
+    random_image = random.choice(images)
+    folder = get_screensaver_config()
+    image_name = os.path.relpath(random_image, folder)
+    image_url = f"/api/screensaver/image/{image_name}"
+    
+    return JSONResponse({"imageUrl": image_url})
 
 @app.get("/api/screensaver/image/{image_name:path}")
 async def get_screensaver_image(image_name: str):
