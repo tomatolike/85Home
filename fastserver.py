@@ -2,11 +2,14 @@ from Core.utility import setup_logging, get_logger
 import time
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from contextlib import asynccontextmanager
 import socket
 import json
 import threading
+import os
+import glob
+import random
 
 setup_logging("85server.log")
 logger = get_logger("HomeServer")
@@ -134,6 +137,65 @@ async def get_status():
     response = send_command(command)
     return response
 
+# Screensaver endpoints
+def get_screensaver_config():
+    """Get screensaver folder path from config.json"""
+    try:
+        with open("config.json", encoding="utf-8") as f:
+            config = json.load(f)
+            return config.get("Screensaver", {}).get("ImageFolder", "screensaver_images")
+    except:
+        return "screensaver_images"
+
+def get_screensaver_timeout():
+    """Get screensaver timeout in minutes from config.json"""
+    try:
+        with open("config.json", encoding="utf-8") as f:
+            config = json.load(f)
+            return config.get("Screensaver", {}).get("TimeoutMinutes", 5)
+    except:
+        return 5
+
+@app.get("/api/screensaver/config")
+async def get_screensaver_config_api():
+    """Get screensaver configuration"""
+    return JSONResponse({
+        "timeoutMinutes": get_screensaver_timeout(),
+        "imageFolder": get_screensaver_config()
+    })
+
+@app.get("/api/screensaver/images")
+async def get_screensaver_images():
+    """Get list of available screensaver images"""
+    folder = get_screensaver_config()
+    if not os.path.exists(folder):
+        return JSONResponse({"images": []})
+    
+    # Supported image formats
+    extensions = ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp", "*.webp"]
+    images = []
+    for ext in extensions:
+        images.extend(glob.glob(os.path.join(folder, ext)))
+        images.extend(glob.glob(os.path.join(folder, ext.upper())))
+    
+    # Convert to relative paths for the API
+    image_paths = [os.path.relpath(img, folder) for img in images]
+    return JSONResponse({"images": image_paths})
+
+@app.get("/api/screensaver/image/{image_name:path}")
+async def get_screensaver_image(image_name: str):
+    """Serve a screensaver image"""
+    folder = get_screensaver_config()
+    image_path = os.path.join(folder, image_name)
+    
+    # Security: prevent path traversal
+    if not os.path.abspath(image_path).startswith(os.path.abspath(folder)):
+        return JSONResponse({"error": "Invalid path"}, status_code=400)
+    
+    if os.path.exists(image_path) and os.path.isfile(image_path):
+        return FileResponse(image_path)
+    return JSONResponse({"error": "Image not found"}, status_code=404)
+
 # Serve React frontend
 import os
 
@@ -153,11 +215,11 @@ async def serve_frontend(full_path: str):
     """Serve React frontend - catch all routes for client-side routing"""
     # Don't interfere with API routes
     if full_path.startswith("api/") or full_path == "task" or full_path == "status":
-        return {"error": "Not found"}
+        return JSONResponse({"error": "Not found"}, status_code=404)
     # Serve index.html for all other routes (React Router will handle routing)
     if os.path.exists("frontend/build/index.html"):
         return FileResponse("frontend/build/index.html")
-    return {"error": "Frontend not built. Run 'npm run build' in frontend directory"}
+    return JSONResponse({"error": "Frontend not built. Run 'npm run build' in frontend directory"}, status_code=404)
 
 if __name__ == "__main__":
     import uvicorn
