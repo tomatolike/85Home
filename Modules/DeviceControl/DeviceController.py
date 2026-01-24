@@ -142,10 +142,16 @@ class KasaDevice(Device):
     @staticmethod
     async def discorverDevices():
         result = {}
-        devices = await Discover.discover()
-        for dev in devices.values():
-            await dev.update()
-            result[dev.alias] = KasaDevice(dev)
+        try:
+            devices = await Discover.discover()
+            for dev in devices.values():
+                try:
+                    await dev.update()
+                    result[dev.alias] = KasaDevice(dev)
+                except Exception as e:
+                    get_logger(__name__).error(f"Error updating Kasa device {dev.alias}: {e}")
+        except Exception as e:
+            get_logger(__name__).error(f"Error discovering Kasa devices: {e}")
         return result
     
     def get_alias(self):
@@ -314,6 +320,7 @@ class WhiskerDevice(Device):
         self.status_ = "unknown"
 
     async def do_thing(self, what_thing):
+        account = None
         try:
             account = Account()
             # Connect to the API and load robots.
@@ -344,10 +351,13 @@ class WhiskerDevice(Device):
             return "Done"
         except Exception as e:
             get_logger(__name__).error(f"Failed to connect Whisker {e}")
-            return "Done"
+            return "unknown" if what_thing == "get_status" else "Done"
         finally:
-            await account.disconnect()
-            return "Done"
+            if account:
+                try:
+                    await account.disconnect()
+                except:
+                    pass
     
     def get_alias(self):
         return self.name
@@ -376,7 +386,7 @@ class WhiskerDevice(Device):
                 retry_limit -= 1
 
     async def update_status(self):
-        self.status_ = self.do_thing("get_status")
+        self.status_ = await self.do_thing("get_status")
 
 class DeviceController:
 
@@ -389,9 +399,18 @@ class DeviceController:
 
     def updateDevices(self):
         self.m_devices = {}
-        self.m_devices.update(asyncio.run(KasaDevice.discorverDevices()))
-        self.m_devices.update(asyncio.run(SwitchBotDevice.discorverDevices()))
-        self.m_devices.update(asyncio.run(WhiskerDevice.discorverDevices()))
+        try:
+            self.m_devices.update(asyncio.run(KasaDevice.discorverDevices()))
+        except Exception as e:
+            self.logger.error(f"Error updating Kasa devices: {e}")
+        try:
+            self.m_devices.update(asyncio.run(SwitchBotDevice.discorverDevices()))
+        except Exception as e:
+            self.logger.error(f"Error updating SwitchBot devices: {e}")
+        try:
+            self.m_devices.update(asyncio.run(WhiskerDevice.discorverDevices()))
+        except Exception as e:
+            self.logger.error(f"Error updating Whisker devices: {e}")
         #self.m_devices.update(asyncio.run(RoborockDevice.discorverDevices()))
 
     def getDevicesInfo(self):

@@ -38,17 +38,24 @@ class VoiceOutputer:
             self.engine.stop()
 
     def getCurrentVolume(self):
-        if system == "Darwin":
+        if system == "Darwin" or system == "Windows":
             return None
-        output = subprocess.check_output(["amixer", "sget", "Master"]).decode()
-        match = re.search(r'\[(\d+)%\]', output)
-        if match:
-            return int(match.group(1))
+        try:
+            output = subprocess.check_output(["amixer", "sget", "Master"]).decode()
+            match = re.search(r'\[(\d+)%\]', output)
+            if match:
+                return int(match.group(1))
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
         return None
     
     def setVolume(self, percent):
-        if system != "Darwin":
+        if system == "Darwin" or system == "Windows":
+            return
+        try:
             subprocess.call(["amixer", "sset", "Master", f"{percent}%"])
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
 
     def getActionInfo(self):
         if system == "Darwin":

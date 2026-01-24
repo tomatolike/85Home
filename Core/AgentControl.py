@@ -60,7 +60,7 @@ class AgentControl:
 
     def __init__(self):
         configs = {}
-        with open("config.json") as f:
+        with open("config.json", encoding="utf-8") as f:
             configs = json.load(f)
         AgentControl._agent_name = configs['AgentName']
         self.logger = get_logger(__name__)

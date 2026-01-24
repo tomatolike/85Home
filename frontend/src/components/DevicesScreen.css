@@ -1,0 +1,65 @@
+.devices-screen {
+  padding-top: 0;
+  height: calc(100vh - 120px); /* Account for top bar (60px) + bottom nav (60px) */
+  overflow-y: auto;
+  padding-bottom: 60px; /* Extra padding at bottom */
+}
+
+.devices-list {
+  padding: 16px;
+}
+
+.device-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.device-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.device-name {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.device-status {
+  font-size: 14px;
+  color: #666;
+}
+
+.device-description {
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.device-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.status-button {
+  padding: 8px 16px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.status-button:hover {
+  background-color: #1976d2;
+}
+
+.status-button:active {
+  background-color: #1565c0;
+}
