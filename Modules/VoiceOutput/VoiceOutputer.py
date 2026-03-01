@@ -11,7 +11,7 @@ class VoiceOutputer:
     def __init__(self):
         self.engine = None
 
-        if system == "Linux" and ("arm" in machine or "aarch64" in machine):
+        if system == "Linux":
             # On Raspberry Pi — use espeak directly for real blocking behavior
             self.use_espeak_direct = True
         else:
