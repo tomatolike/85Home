@@ -143,8 +143,12 @@ def get_screensaver_config():
     try:
         with open("config.json", encoding="utf-8") as f:
             config = json.load(f)
-            return config.get("Screensaver", {}).get("ImageFolder", "screensaver_images")
-    except:
+            print("get screen sever config:", config)
+            image_path=config.get("Screensaver", {}).get("ImageFolder", "screensaver_images")
+            print("image path:", image_path)
+            return image_path
+    except Exception as e:
+        print("get screen saver timeout exception", e)
         return "screensaver_images"
 
 def get_screensaver_timeout():
@@ -152,8 +156,12 @@ def get_screensaver_timeout():
     try:
         with open("config.json", encoding="utf-8") as f:
             config = json.load(f)
-            return config.get("Screensaver", {}).get("TimeoutMinutes", 5)
-    except:
+            print("get screen sever timeout:", config)
+            timeout = config.get("Screensaver", {}).get("TimeoutMinutes", 5)
+            print("timeout:",timeout)
+            return timeout
+    except Exception as e:
+        print("get screen saver timeout exception", e)
         return 5
 
 @app.get("/api/screensaver/config")
