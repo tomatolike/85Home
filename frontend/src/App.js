@@ -13,7 +13,7 @@ function App() {
   const [selectedTab, setSelectedTab] = useState(0);
   const [serverAddress, setServerAddress] = useState(
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? `${window.location.hostname}:8080`
+      ? `${window.location.hostname}:5000`
       : `${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}`
   );
   const [api, setApi] = useState(new ApiService(`http://${serverAddress}`));

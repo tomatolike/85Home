@@ -29,7 +29,7 @@ class VoiceCollector:
                 cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, mode="vosk", model_path="Modules/VoiceRec/models/vosk-model-small-cn-0.22", whisper_model_path="/Users/linick/Desktop/85Home/Modules/VoiceRec/models/ggml-tiny.en.bin", samplerate=16000):
+    def __init__(self, mode="vosk", model_path="Modules/VoiceRec/models/vosk-model-cn-0.22", whisper_model_path="/Users/linick/Desktop/85Home/Modules/VoiceRec/models/ggml-tiny.en.bin", samplerate=16000):
         if hasattr(self, '_initialized') and self._initialized:
             return
 

@@ -4,7 +4,7 @@ if __name__ == "__main__":
     def print_text(text):
         print("Recognized:", text)
 
-    vc = VoiceCollector()
+    vc = VoiceCollector(mode="vosk", model_path="models/vosk-model-cn-0.22")
     vc.SetCallback(print_text)
     vc.Start()
 
