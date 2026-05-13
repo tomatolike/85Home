@@ -23,42 +23,82 @@ _tcp_lock = threading.Lock()
 _tcp_buffer = ""
 _response_ready = threading.Event()
 _pending_response = None
+# Track the receive thread so we never start more than one at a time.
+# Previously, every reconnect spawned a fresh daemon _receive_loop thread
+# without stopping the old one, leaking ~18k threads over weeks until the
+# process exhausted its VM address space and couldn't start any new thread.
+_receive_thread = None
+_receive_thread_lock = threading.Lock()
+
 
 def _connect_to_agent():
-    """Establish persistent connection to agent"""
-    global _tcp_socket, _tcp_buffer
+    """Establish a persistent connection to the agent. Returns True on success.
+
+    Caller should already hold _tcp_lock (or be running at startup before any
+    requests can race with it). Only starts a receive thread if one isn't
+    already alive.
+    """
+    global _tcp_socket, _tcp_buffer, _receive_thread
     try:
-        _tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        _tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-        _tcp_socket.connect((AGENT_HOST, AGENT_PORT))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        sock.connect((AGENT_HOST, AGENT_PORT))
+        _tcp_socket = sock
         _tcp_buffer = ""
         logger.info("Connected to agent control server")
-        # Start background thread to receive data
-        threading.Thread(target=_receive_loop, daemon=True).start()
+        # Start the receive loop only if there isn't already a live one.
+        with _receive_thread_lock:
+            if _receive_thread is None or not _receive_thread.is_alive():
+                _receive_thread = threading.Thread(
+                    target=_receive_loop, daemon=True, name="agent-recv"
+                )
+                _receive_thread.start()
+        return True
     except Exception as e:
         logger.error(f"Failed to connect to agent: {e}")
         _tcp_socket = None
+        return False
+
 
 def _receive_loop():
-    """Background thread to receive data from agent"""
+    """Background thread that drains the agent socket.
+
+    Exits cleanly when the socket closes or errors. It does NOT attempt to
+    reconnect — the next send_command() will notice _tcp_socket is None and
+    trigger a fresh _connect_to_agent() under the lock, which will spawn a
+    new receive thread. This guarantees at most one receive thread is alive
+    at any time.
+    """
     global _tcp_socket, _tcp_buffer, _pending_response, _response_ready
-    while True:
-        if _tcp_socket is None:
-            time.sleep(0.1)
-            continue
-        try:
-            data = _tcp_socket.recv(1024)
+    logger.info("Receive loop started")
+    try:
+        while True:
+            sock = _tcp_socket
+            if sock is None:
+                # Someone else (send_command) has invalidated the socket.
+                # Exit; the next reconnect will start a fresh receive loop.
+                logger.info("Receive loop exiting: socket is None")
+                return
+            try:
+                data = sock.recv(1024)
+            except Exception as e:
+                logger.error(f"Error receiving from agent: {e}")
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+                if _tcp_socket is sock:
+                    _tcp_socket = None
+                return
             if not data:
-                logger.warning("Connection to agent closed, reconnecting...")
-                if _tcp_socket:
-                    try:
-                        _tcp_socket.close()
-                    except:
-                        pass
-                _tcp_socket = None
-                time.sleep(1)
-                _connect_to_agent()
-                continue
+                logger.warning("Connection to agent closed")
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+                if _tcp_socket is sock:
+                    _tcp_socket = None
+                return
             _tcp_buffer += data.decode()
             # Process complete messages
             while "\n" in _tcp_buffer:
@@ -69,16 +109,8 @@ def _receive_loop():
                     _response_ready.set()
                 except json.JSONDecodeError:
                     logger.warning(f"Failed to parse response: {line}")
-        except Exception as e:
-            logger.error(f"Error receiving from agent: {e}")
-            if _tcp_socket:
-                try:
-                    _tcp_socket.close()
-                except:
-                    pass
-            _tcp_socket = None
-            time.sleep(1)
-            _connect_to_agent()
+    finally:
+        logger.info("Receive loop exited")
 
 def send_command(command: dict):
     """Send command using persistent connection"""
