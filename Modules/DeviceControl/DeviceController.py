@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from kasa import Discover
 from Core.utility import get_logger
 from pylitterbot import Account
@@ -396,22 +397,41 @@ class DeviceController:
         SwitchBotDevice.credentials = switch_bot_creds
         WhiskerDevice.credentials = whisker_creds
         RoborockDevice.credentials = roborock_creds
+        # A single long-lived event loop shared by every async call below.
+        # We previously used asyncio.run(...) per call, which closed the loop
+        # each time; python-kasa's SmartDevice caches a transport bound to the
+        # loop it was created with, so the second control call on any Kasa
+        # device would fail with "Event loop is closed". Running a persistent
+        # loop in a daemon thread and scheduling coroutines onto it with
+        # asyncio.run_coroutine_threadsafe fixes that.
+        self._loop = asyncio.new_event_loop()
+        self._loop_thread = threading.Thread(
+            target=self._loop.run_forever,
+            daemon=True,
+            name="device-controller-loop",
+        )
+        self._loop_thread.start()
+
+    def _run_coro(self, coro, timeout=60):
+        """Run an awaitable on the background loop and wait for the result."""
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return future.result(timeout=timeout)
 
     def updateDevices(self):
         self.m_devices = {}
         try:
-            self.m_devices.update(asyncio.run(KasaDevice.discorverDevices()))
+            self.m_devices.update(self._run_coro(KasaDevice.discorverDevices()))
         except Exception as e:
             self.logger.error(f"Error updating Kasa devices: {e}")
         try:
-            self.m_devices.update(asyncio.run(SwitchBotDevice.discorverDevices()))
+            self.m_devices.update(self._run_coro(SwitchBotDevice.discorverDevices()))
         except Exception as e:
             self.logger.error(f"Error updating SwitchBot devices: {e}")
         try:
-            self.m_devices.update(asyncio.run(WhiskerDevice.discorverDevices()))
+            self.m_devices.update(self._run_coro(WhiskerDevice.discorverDevices()))
         except Exception as e:
             self.logger.error(f"Error updating Whisker devices: {e}")
-        #self.m_devices.update(asyncio.run(RoborockDevice.discorverDevices()))
+        #self.m_devices.update(self._run_coro(RoborockDevice.discorverDevices()))
 
     def getDevicesInfo(self):
         result = []
@@ -430,9 +450,9 @@ class DeviceController:
             while retry_time > 0:
                 try:
                     print(f"Try Change {alias} to {statuses[index]}")
-                    asyncio.run(self.m_devices[alias].update_status())
-                    asyncio.run(self.m_devices[alias].change_status(statuses[index]))
-                    asyncio.run(self.m_devices[alias].update_status())
+                    self._run_coro(self.m_devices[alias].update_status())
+                    self._run_coro(self.m_devices[alias].change_status(statuses[index]))
+                    self._run_coro(self.m_devices[alias].update_status())
                     if self.m_devices[alias].get_status() == statuses[index]:
                         break
                     retry_time -= 1

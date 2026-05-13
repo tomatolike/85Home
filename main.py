@@ -86,6 +86,11 @@ def handle_client(conn, addr):
 
 def run_agent_control_server(host="127.0.0.1", port=9001):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        # Allow rebinding quickly after a restart; without this, a lingering
+        # TIME_WAIT or a still-open peer fd (e.g. fastserver's persistent
+        # connection) will make bind() fail with EADDRINUSE and the IPC
+        # server thread will die silently.
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((host, port))
         s.listen()
         print(f"AgentControl server listening on {host}:{port}")
