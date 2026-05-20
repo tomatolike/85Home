@@ -5,7 +5,7 @@ import json
 import time
 
 class AiContactor:
-    def __init__(self, mode="DEEPSEEK", key=""):
+    def __init__(self, mode="BEDROCK", key="", bedrock_url="http://127.0.0.1:8199/v1", openclaw_url="http://127.0.0.1:18789/v1", openclaw_token=""):
         self.logger = get_logger(__name__)
         self.open_ai_api_key = key
         self.deep_seek_api_key = key
@@ -15,6 +15,10 @@ class AiContactor:
             self.client = OpenAI(api_key=self.open_ai_api_key)
         elif self.mode == "DEEPSEEK":
             self.client = OpenAI(api_key=self.deep_seek_api_key, base_url="https://api.deepseek.com")
+        elif self.mode == "BEDROCK":
+            self.client = OpenAI(api_key="unused", base_url=bedrock_url)
+        elif self.mode == "OPENCLAW":
+            self.client = OpenAI(api_key=openclaw_token, base_url=openclaw_url)
 
         self.system_message = ""
         self.message_list = [
@@ -46,17 +50,32 @@ class AiContactor:
     def communicate(self, message, from_type=1):
         self.logger.info(f"Send to AI model: {message}")
         response = None
+        messages = self.generate_messages(message, from_type)
         if self.mode == "OPENAI":
             response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=self.generate_messages(message, from_type),
+                messages=messages,
                 stream=False
             )
             response = self.parse_response(response.choices[0].message.content)
         elif self.mode == "DEEPSEEK":
             response = self.client.chat.completions.create(
                 model="deepseek-chat",
-                messages=self.generate_messages(message, from_type),
+                messages=messages,
+                stream=False
+            )
+            response = self.parse_response(response.choices[0].message.content)
+        elif self.mode == "BEDROCK":
+            response = self.client.chat.completions.create(
+                model="claude-opus-4-6",
+                messages=messages,
+                stream=False
+            )
+            response = self.parse_response(response.choices[0].message.content)
+        elif self.mode == "OPENCLAW":
+            response = self.client.chat.completions.create(
+                model="openclaw/default",
+                messages=messages,
                 stream=False
             )
             response = self.parse_response(response.choices[0].message.content)

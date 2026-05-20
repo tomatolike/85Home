@@ -69,7 +69,14 @@ class AgentControl:
         self.task_queue = queue.Queue()
         self.device_controller = DeviceController(switch_bot_creds=configs["SwitchBot"], whisker_creds=configs['Whisker'], roborock_creds=configs['Roborock'])
         self.device_controller.updateDevices()
-        self.ai_contactor = AiContactor(mode="DEEPSEEK", key=configs["DeepSeek"]["Key"])
+        ai_mode = configs.get("AiMode", "BEDROCK")
+        self.ai_contactor = AiContactor(
+            mode=ai_mode,
+            key=configs.get("DeepSeek", {}).get("Key", ""),
+            bedrock_url=configs.get("Bedrock", {}).get("Url", "http://127.0.0.1:8199/v1"),
+            openclaw_url=configs.get("OpenClaw", {}).get("Url", "http://127.0.0.1:18789/v1"),
+            openclaw_token=configs.get("OpenClaw", {}).get("Token", "")
+        )
         self.voice_outputer = VoiceOutputer()
         self.set_timer = SetTimer()
         self.wait_for_user_instruction = False
