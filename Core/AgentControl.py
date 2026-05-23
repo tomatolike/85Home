@@ -159,16 +159,25 @@ class AgentControl:
                     self.ai_contactor.add_message_history(json.dumps(action), role="assistant")
                     self.process_response(action, task['type'] == "chat_message")
                 else:
-                    response = self.ai_contactor.communicate(task["text"])
-                    self.process_response(response, task['type'] == "chat_message")
+                    try:
+                        response = self.ai_contactor.communicate(task["text"])
+                        self.process_response(response, task['type'] == "chat_message")
+                    except Exception as e:
+                        self.logger.error(f"AI communicate failed: {e}")
+                        if task['type'] != "chat_message":
+                            self.voice_outputer.speak("调用模型失败")
                 self.start_voice_collection()
             elif task["type"] == "system_message":
                 self.wait_for_user_instruction = False
                 self.stop_voice_collection()
                 self.logger.info(f"System Message: {task['text']}")
                 self.re_generate_system_message()
-                response = self.ai_contactor.communicate(task["text"], from_type=3)
-                self.process_response(response)
+                try:
+                    response = self.ai_contactor.communicate(task["text"], from_type=3)
+                    self.process_response(response)
+                except Exception as e:
+                    self.logger.error(f"AI communicate failed (system_message): {e}")
+                    self.voice_outputer.speak("调用模型失败")
                 self.start_voice_collection()
             elif task["type"] == "robot_status":
                 #self.logger.info(f"Robot status received: {task['status']}")
