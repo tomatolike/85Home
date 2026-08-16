@@ -10,12 +10,18 @@ import threading
 import os
 import glob
 import random
+import platform
 
 setup_logging("85server.log")
 logger = get_logger("HomeServer")
 
 AGENT_HOST = "127.0.0.1"
 AGENT_PORT = 9001
+
+# TCP keepalive tuning: detect dead connections within ~45s instead of ~2h
+_KEEPALIVE_IDLE = 15    # seconds idle before first probe
+_KEEPALIVE_INTERVAL = 5 # seconds between probes
+_KEEPALIVE_COUNT = 6    # probes before declaring dead
 
 # Persistent TCP connection
 _tcp_socket = None
@@ -24,11 +30,33 @@ _tcp_buffer = ""
 _response_ready = threading.Event()
 _pending_response = None
 # Track the receive thread so we never start more than one at a time.
-# Previously, every reconnect spawned a fresh daemon _receive_loop thread
-# without stopping the old one, leaking ~18k threads over weeks until the
-# process exhausted its VM address space and couldn't start any new thread.
 _receive_thread = None
 _receive_thread_lock = threading.Lock()
+# Heartbeat thread for proactive reconnection
+_heartbeat_thread = None
+
+
+def _configure_keepalive(sock):
+    """Set aggressive TCP keepalive on the socket to detect dead connections fast."""
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+    if platform.system() == "Linux":
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, _KEEPALIVE_IDLE)
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, _KEEPALIVE_INTERVAL)
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, _KEEPALIVE_COUNT)
+    elif platform.system() == "Darwin":
+        # macOS: TCP_KEEPALIVE controls the idle time
+        TCP_KEEPALIVE = 0x10
+        sock.setsockopt(socket.IPPROTO_TCP, TCP_KEEPALIVE, _KEEPALIVE_IDLE)
+
+
+def _close_socket(sock):
+    """Safely close a socket, ignoring errors."""
+    if sock is None:
+        return
+    try:
+        sock.close()
+    except Exception:
+        pass
 
 
 def _connect_to_agent():
@@ -41,8 +69,10 @@ def _connect_to_agent():
     global _tcp_socket, _tcp_buffer, _receive_thread
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        _configure_keepalive(sock)
+        sock.settimeout(5.0)  # connect timeout
         sock.connect((AGENT_HOST, AGENT_PORT))
+        sock.settimeout(None)  # back to blocking for recv
         _tcp_socket = sock
         _tcp_buffer = ""
         logger.info("Connected to agent control server")
@@ -112,47 +142,98 @@ def _receive_loop():
     finally:
         logger.info("Receive loop exited")
 
-def send_command(command: dict):
-    """Send command using persistent connection"""
+def send_command(command: dict, timeout: float = 5.0):
+    """Send command using persistent connection. Auto-reconnects on failure."""
     global _tcp_socket, _pending_response, _response_ready
-    
-    with _tcp_lock:
-        # Ensure connection exists
-        if _tcp_socket is None:
-            _connect_to_agent()
+
+    max_retries = 2
+    for attempt in range(max_retries):
+        with _tcp_lock:
+            # Ensure connection exists
             if _tcp_socket is None:
-                return {"error": "Failed to connect to agent"}
-        
-        # Clear previous response state
-        _pending_response = None
-        _response_ready.clear()
-        
+                _connect_to_agent()
+                if _tcp_socket is None:
+                    if attempt < max_retries - 1:
+                        continue
+                    return {"error": "Failed to connect to agent"}
+
+            # Clear previous response state
+            _pending_response = None
+            _response_ready.clear()
+
+            try:
+                # Send command
+                _tcp_socket.sendall((json.dumps(command) + "\n").encode())
+            except Exception as e:
+                logger.error(f"Error sending command (attempt {attempt+1}): {e}")
+                _close_socket(_tcp_socket)
+                _tcp_socket = None
+                if attempt < max_retries - 1:
+                    continue
+                return {"error": str(e)}
+
+        # Wait for response OUTSIDE the lock so receive_loop can set it
+        if _response_ready.wait(timeout=timeout):
+            response = _pending_response
+            _pending_response = None
+            return response if response else {"error": "Empty response"}
+        else:
+            # Timeout — connection is likely dead. Tear it down so next call reconnects.
+            logger.warning(f"Timeout waiting for agent response (attempt {attempt+1})")
+            with _tcp_lock:
+                _close_socket(_tcp_socket)
+                _tcp_socket = None
+            if attempt < max_retries - 1:
+                continue
+            return {"error": "Timeout waiting for response"}
+
+    return {"error": "Failed after retries"}
+
+def _heartbeat_loop():
+    """Background thread that periodically pings the agent.
+
+    If the connection is dead, it proactively reconnects so that the next
+    user request doesn't have to wait for a timeout + reconnect cycle.
+    Runs every 30 seconds.
+    """
+    global _tcp_socket
+    logger.info("Heartbeat loop started")
+    while True:
+        time.sleep(30)
         try:
-            # Send command
-            _tcp_socket.sendall((json.dumps(command) + "\n").encode())
-            
-            # Wait for response (with timeout)
-            if _response_ready.wait(timeout=5.0):
-                response = _pending_response
-                _pending_response = None
-                return response if response else {"error": "Empty response"}
-            else:
-                return {"error": "Timeout waiting for response"}
+            with _tcp_lock:
+                if _tcp_socket is None:
+                    logger.info("Heartbeat: socket is None, attempting reconnect")
+                    _connect_to_agent()
+                    continue
+                # Send a lightweight ping to verify the connection is alive
+                try:
+                    # Bare newline = ping; main.py skips blank lines silently.
+                    _tcp_socket.sendall(b"\n")
+                except Exception as e:
+                    logger.warning(f"Heartbeat: send failed ({e}), reconnecting")
+                    _close_socket(_tcp_socket)
+                    _tcp_socket = None
+                    _connect_to_agent()
         except Exception as e:
-            logger.error(f"Error sending command: {e}")
-            _tcp_socket = None
-            return {"error": str(e)}
+            logger.error(f"Heartbeat loop error: {e}")
+
 
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _heartbeat_thread
     # Startup
     _connect_to_agent()
+    _heartbeat_thread = threading.Thread(
+        target=_heartbeat_loop, daemon=True, name="agent-heartbeat"
+    )
+    _heartbeat_thread.start()
     yield
     # Shutdown
     global _tcp_socket
     if _tcp_socket:
-        _tcp_socket.close()
+        _close_socket(_tcp_socket)
         _tcp_socket = None
 
 app = FastAPI(lifespan=lifespan)

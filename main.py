@@ -40,6 +40,12 @@ def handle_client(conn, addr):
                 buffer += data.decode()
                 while "\n" in buffer:
                     line, buffer = buffer.split("\n", 1)
+                    # Blank lines are heartbeat pings from fastserver.py, which
+                    # sends a bare "\n" every 30s to verify the socket is alive.
+                    # Skip them silently: they are not requests, need no response,
+                    # and logging them as JSON errors buried real protocol faults.
+                    if not line.strip():
+                        continue
                     response = {}
                     try:
                         request = json.loads(line)
