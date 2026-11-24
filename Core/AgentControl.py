@@ -18,13 +18,49 @@ class AgentControl:
             cls._instance = super().__new__(cls)
         return cls._instance
 
+    # Homophones / common Vosk mis-recognitions of the wake word "把握".
+    # Keep these >= 2 chars: single chars like 我/饭/呢/法 are the small model's
+    # noise hallucinations and would cause constant false wakes.
+    _wake_aliases = (
+        "把握", "把我", "把卧", "把哦", "把窝",
+        "巴沃", "巴我", "芭沃", "八握", "八沃",
+        "拔我", "拔沃", "霸我", "爸我",
+        "哇喔", "瓦沃", "哇沃",
+    )
+
+    # Above this length we stop treating a substring hit as a wake call, so
+    # sentences like "我很有把握" don't wake the agent.
+    _wake_max_len = 6
+
+    @staticmethod
+    def _normalize(text):
+        if not text:
+            return ""
+        return "".join(ch for ch in text if not ch.isspace() and ch not in "，。、！？,.!?~")
+
     @staticmethod
     def is_calling_agent(text):
-        if AgentControl._agent_name == text:
+        normalized = AgentControl._normalize(text)
+        if not normalized:
+            return False
+
+        name = AgentControl._normalize(AgentControl._agent_name)
+        if normalized == name:
             return True
-        text = text.replace(" ", "")
-        if AgentControl._agent_name == text:
-            return True
+
+        if len(normalized) > AgentControl._wake_max_len:
+            return False
+
+        candidates = set(AgentControl._wake_aliases)
+        if name:
+            candidates.add(name)
+        for alias in candidates:
+            if alias and alias in normalized:
+                if AgentControl._instance is not None and alias != name:
+                    AgentControl._instance.logger.info(
+                        f"Wake word matched via alias '{alias}' in: {text}"
+                    )
+                return True
         return False
 
     @staticmethod
